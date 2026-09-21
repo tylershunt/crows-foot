@@ -13,6 +13,8 @@ interface SectionProps {
   /** Receives the section's pull requests in the order shown here. */
   onBurnDown: (pullRequests: PullRequest[]) => void;
   onToggleSnooze: (pullRequest: PullRequest, snoozed: boolean) => void;
+  /** The color marking the stack a pull request belongs to, across all sections. */
+  stackColor: (pullRequest: PullRequest) => string;
   /** Draws skeleton rows while a fetch is in flight and no results are cached yet. */
   loading: boolean;
 }
@@ -24,6 +26,7 @@ export function Section({
   onEdit,
   onBurnDown,
   onToggleSnooze,
+  stackColor,
   loading,
 }: SectionProps) {
   const { config, pullRequests, totalCount, countIsPartial, error } = section;
@@ -101,8 +104,10 @@ export function Section({
               </div>
             ) : (
               <>
-                {groups.map((group) =>
-                  group.rows.length === 1 ? (
+                {groups.map((group) => {
+                  const color = stackColor(group.rows[0]!.pullRequest);
+
+                  return group.rows.length === 1 ? (
                     <PullRequestRow
                       key={group.id}
                       pr={group.rows[0]!.pullRequest}
@@ -110,6 +115,7 @@ export function Section({
                       onToggleSnooze={onToggleSnooze}
                       homeSection={section.homeSections?.[group.rows[0]!.pullRequest.id]}
                       detached={group.rows[0]!.detached}
+                      stackColor={color}
                     />
                   ) : (
                     <div key={group.id} className="relative">
@@ -117,14 +123,14 @@ export function Section({
                         role="img"
                         aria-label={`Stack of ${group.rows.length} pull requests`}
                         className="pointer-events-none absolute left-[4px] top-px z-10"
-                        style={{ color: config.color, opacity: 0.8 }}
+                        style={{ color, opacity: 0.8 }}
                       >
                         <StackIcon className="h-3 w-3" />
                       </span>
                       <span
                         aria-hidden
                         className="pointer-events-none absolute bottom-2.5 left-[9px] top-[14px] z-10 w-2 border-y-2 border-l-2"
-                        style={{ borderColor: config.color, opacity: 0.55 }}
+                        style={{ borderColor: color, opacity: 0.55 }}
                       />
                       {group.rows.map((row) => (
                         <PullRequestRow
@@ -134,11 +140,12 @@ export function Section({
                           onToggleSnooze={onToggleSnooze}
                           homeSection={section.homeSections?.[row.pullRequest.id]}
                           stackedOn={row.parent}
+                          stackColor={color}
                         />
                       ))}
                     </div>
-                  ),
-                )}
+                  );
+                })}
                 {hiddenCount > 0 && (
                   <p className="px-4 py-2 text-xs text-ink-400 dark:text-ink-500">
                     {hiddenCount} more match this filter. Raise the section limit to see them.

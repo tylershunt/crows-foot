@@ -27,6 +27,8 @@ interface PullRequestRowProps {
   stackedOn?: PullRequest | null;
   /** Marks a pull request stacked on a branch whose pull request is not shown here. */
   detached?: boolean;
+  /** The color of the stack this row belongs to, worn by its stack marker. */
+  stackColor: string;
 }
 
 export function PullRequestRow({
@@ -36,6 +38,7 @@ export function PullRequestRow({
   homeSection,
   stackedOn = null,
   detached = false,
+  stackColor,
 }: PullRequestRowProps) {
   const { ref: titleRef, title: titleTooltip } = useOverflowTitle<HTMLSpanElement>(pr.title);
 
@@ -98,9 +101,9 @@ export function PullRequestRow({
                     ? `Stacked on #${stackedOn.number} — ${stackedOn.title}`
                     : `Stacked on ${pr.baseRef}`
                 }
-                className="flex shrink-0 items-center gap-1 text-sheen-600 dark:text-sheen-400"
+                className="flex shrink-0 items-center gap-1"
               >
-                <StackIcon className="h-3 w-3" />
+                <StackIcon className="h-3 w-3" style={{ color: stackColor }} />
                 {stackedOn && <span className="tabular-nums">on #{stackedOn.number}</span>}
               </span>
             )}

@@ -254,8 +254,15 @@ The choice survives a restart.
 ## Stacks
 
 Pull requests stacked on one another are moved next to each other and joined by
-a bar in the section's color, drawn in the gutter left of the unread marker. Rows are not indented; instead each one names the
+a bar in the stack's own color, drawn in the gutter left of the unread marker. Rows are not indented; instead each one names the
 pull request it sits on, as `on #1234`. Hovering that gives the parent's title.
+
+A stack's color comes from a fixed palette, chosen by the number of the pull
+request at the bottom of the stack, so a stack that spreads across sections —
+one member approved, another still waiting — wears one color in all of them,
+and the stack icon on a member sitting alone in a section carries it too. The
+palette holds eight hues, so two stacks whose bottom numbers are a multiple of
+eight apart share a color; consecutive ones never do.
 
 Naming the parent rather than indenting means sibling branches read correctly:
 two pull requests that both build on `#1234` each say `on #1234`, which says
@@ -268,8 +275,8 @@ or token is involved.
 
 Only the members that a section's own query returned can be grouped. A pull
 request built on a branch whose pull request is not in that section is instead
-marked with a stack icon alone, so it is not mistaken for standalone work;
-hover it to see the branch it builds on.
+marked with a stack icon alone, in its stack's color, so it is not mistaken for
+standalone work; hover it to see the branch it builds on.
 
 ## Keyboard shortcuts
 
@@ -286,10 +293,7 @@ GitHub. Change a section's query when you want different results.
 ## Refreshing
 
 The dashboard refetches on the interval set in Settings (120 seconds by
-default), whenever the window regains focus, and when you press `r`. The sidebar
-shows your remaining GitHub GraphQL rate limit; each refresh costs roughly one
-point per search out of 5,000 per hour, which is one per section until a query
-has an `or` in it.
+default), whenever the window regains focus, and when you press `r`.
 
 ## Theme
 

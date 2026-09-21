@@ -13,7 +13,6 @@ interface SidebarProps {
   onToggleCollapsed: () => void;
   onToggleTheme: () => void;
   onOpenSettings: () => void;
-  rateLimitRemaining: number | null;
 }
 
 /** How long the sidebar takes to change width, which every part of it moves in. */
@@ -38,7 +37,6 @@ export function Sidebar({
   onToggleCollapsed,
   onToggleTheme,
   onOpenSettings,
-  rateLimitRemaining,
 }: SidebarProps) {
   const iconButton =
     "shrink-0 rounded-lg p-1.5 text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-800 dark:text-ink-400 dark:hover:bg-ink-800 dark:hover:text-ink-100";
@@ -108,21 +106,12 @@ export function Sidebar({
             href={viewer.url}
             target="_blank"
             rel="noreferrer"
-            title={
-              collapsed && rateLimitRemaining !== null
-                ? `${viewer.login} — ${rateLimitRemaining.toLocaleString()} API points left`
-                : undefined
-            }
+            title={collapsed ? viewer.login : undefined}
             className="flex items-center rounded-lg px-2 py-2 transition-colors hover:bg-ink-100 dark:hover:bg-ink-800"
           >
             <img src={viewer.avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-full ring-1 ring-sheen-400/40" />
             <div className={slidingLabel(collapsed, "max-w-36")}>
               <p className="truncate text-sm font-medium text-ink-800 dark:text-ink-100">{viewer.login}</p>
-              {rateLimitRemaining !== null && (
-                <p className="truncate text-[11px] text-ink-400 dark:text-ink-500">
-                  {rateLimitRemaining.toLocaleString()} API points left
-                </p>
-              )}
             </div>
           </a>
         )}

@@ -213,7 +213,6 @@ mod tests {
     fn dashboard(rows: &[(&str, &str)], total_count: Option<i64>) -> DashboardResponse {
         DashboardResponse {
             viewer: Actor { login: "someone".into(), avatar_url: String::new(), url: String::new() },
-            rate_limit_remaining: 5000,
             sections: vec![section("s", rows, total_count)],
         }
     }

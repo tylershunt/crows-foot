@@ -36,17 +36,12 @@ export interface StackGroup {
  * stacks all express the relationship.
  */
 export function groupIntoStacks(pullRequests: PullRequest[]): StackGroup[] {
-  const byBranch = new Map<string, PullRequest>();
-  for (const pullRequest of pullRequests) {
-    byBranch.set(branchKey(pullRequest.repo, pullRequest.headRef), pullRequest);
-  }
+  const parents = parentsOf(pullRequests);
 
-  const parents = new Map<string, PullRequest>();
   const children = new Map<string, PullRequest[]>();
   for (const pullRequest of pullRequests) {
-    const parent = byBranch.get(branchKey(pullRequest.repo, pullRequest.baseRef));
-    if (!parent || parent.id === pullRequest.id) continue;
-    parents.set(pullRequest.id, parent);
+    const parent = parents.get(pullRequest.id);
+    if (!parent) continue;
     children.set(parent.id, [...(children.get(parent.id) ?? []), pullRequest]);
   }
 
@@ -80,6 +75,47 @@ export function groupIntoStacks(pullRequests: PullRequest[]): StackGroup[] {
   }
 
   return groups;
+}
+
+/**
+ * The pull request at the bottom of each one's stack, keyed by pull request id.
+ *
+ * A pull request stacked on none of the others given is its own bottom, so
+ * every input has an entry.
+ */
+export function stackBottoms(pullRequests: PullRequest[]): Map<string, PullRequest> {
+  const parents = parentsOf(pullRequests);
+  return new Map(pullRequests.map((pullRequest) => [pullRequest.id, bottomOf(pullRequest, parents)]));
+}
+
+/** The pull request each one is stacked on, keyed by pull request id. */
+function parentsOf(pullRequests: PullRequest[]): Map<string, PullRequest> {
+  const byBranch = new Map<string, PullRequest>();
+  for (const pullRequest of pullRequests) {
+    byBranch.set(branchKey(pullRequest.repo, pullRequest.headRef), pullRequest);
+  }
+
+  const parents = new Map<string, PullRequest>();
+  for (const pullRequest of pullRequests) {
+    const parent = byBranch.get(branchKey(pullRequest.repo, pullRequest.baseRef));
+    if (!parent || parent.id === pullRequest.id) continue;
+    parents.set(pullRequest.id, parent);
+  }
+
+  return parents;
+}
+
+/** Follows the chain down, stopping before a base/head cycle is walked twice. */
+function bottomOf(pullRequest: PullRequest, parents: Map<string, PullRequest>): PullRequest {
+  const seen = new Set<string>([pullRequest.id]);
+  let current = pullRequest;
+
+  for (;;) {
+    const parent = parents.get(current.id);
+    if (!parent || seen.has(parent.id)) return current;
+    seen.add(parent.id);
+    current = parent;
+  }
 }
 
 function branchKey(repo: string, branch: string): string {

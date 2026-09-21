@@ -10,6 +10,7 @@ import { SNOOZED_SECTION } from "../shared/snoozed.js";
 import { api } from "./lib/api.js";
 import { badgeCount, showOnTheDock } from "./lib/badge.js";
 import { openExternal } from "./lib/external.js";
+import { stackColors } from "./lib/stackColor.js";
 import { titleBar } from "./lib/titlebar.js";
 
 type Theme = "light" | "dark";
@@ -122,6 +123,13 @@ export function App() {
     [config],
   );
 
+  // Drawn from every section rather than the filtered view, so a stack keeps its
+  // color while the filter box hides the members that name its bottom.
+  const stackColor = useMemo(
+    () => stackColors((dashboard?.sections ?? []).flatMap((section) => section.pullRequests)),
+    [dashboard],
+  );
+
   const applyConfig = useCallback(
     async (next: AppConfig) => {
       const { config: saved, path } = await api.saveConfig(next);
@@ -189,7 +197,6 @@ export function App() {
             setSettingsFocus(null);
             setSettingsOpen(true);
           }}
-          rateLimitRemaining={dashboard?.rateLimitRemaining ?? null}
         />
 
         <main className="flex min-w-0 flex-1 flex-col">
@@ -262,6 +269,7 @@ export function App() {
                     }}
                     onBurnDown={burnDown}
                     onToggleSnooze={toggleSnooze}
+                    stackColor={stackColor}
                   />
                 );
               })}

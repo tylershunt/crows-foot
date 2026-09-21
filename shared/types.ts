@@ -128,7 +128,6 @@ export interface SectionResult {
 export interface DashboardResponse {
   viewer: Actor;
   sections: SectionResult[];
-  rateLimitRemaining: number;
 }
 
 /** What a query comes to: the searches GitHub runs, and advice about them. */

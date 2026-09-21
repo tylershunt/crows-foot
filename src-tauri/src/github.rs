@@ -50,12 +50,11 @@ fragment PullRequestFields on PullRequest {
   }
 }"#;
 
-const VIEWER_DOCUMENT: &str = "query { viewer { login avatarUrl url } rateLimit { remaining } }";
+const VIEWER_DOCUMENT: &str = "query { viewer { login avatarUrl url } }";
 
 fn search_document() -> String {
     format!(
         r#"query SectionSearch($query: String!, $limit: Int!) {{
-  rateLimit {{ remaining }}
   search(query: $query, type: ISSUE, first: $limit) {{
     issueCount
     nodes {{ ...PullRequestFields }}
@@ -85,21 +84,7 @@ pub async fn fetch_dashboard(
     let (viewer, sections) = futures::join!(viewer_request, section_requests);
     let viewer = viewer?;
 
-    Ok(DashboardResponse {
-        rate_limit_remaining: sections
-            .iter()
-            .map(|section| section.remaining)
-            .chain(std::iter::once(viewer.rate_limit.remaining))
-            .min()
-            .unwrap_or(i64::MAX),
-        sections: sections.into_iter().map(|section| section.result).collect(),
-        viewer: viewer.viewer,
-    })
-}
-
-struct Fetched {
-    result: SectionResult,
-    remaining: i64,
+    Ok(DashboardResponse { sections, viewer: viewer.viewer })
 }
 
 /// One search's answer.
@@ -107,7 +92,6 @@ struct Page {
     pull_requests: Vec<PullRequest>,
     /// Matches GitHub holds, which exceeds `pull_requests.len()` past the limit.
     issue_count: i64,
-    remaining: i64,
 }
 
 async fn fetch_section(
@@ -115,7 +99,7 @@ async fn fetch_section(
     token: &str,
     config: &SectionConfig,
     global_filters: &[GlobalFilter],
-) -> Fetched {
+) -> SectionResult {
     let plan = match query::plan(&config.query, global_filters) {
         Ok(plan) => plan,
         Err(error) => return failed(config, error.to_string()),
@@ -134,10 +118,7 @@ async fn fetch_section(
         }
     }
 
-    Fetched {
-        remaining: pages.iter().map(|page| page.remaining).min().unwrap_or(i64::MAX),
-        result: assemble(config, &plan, pages),
-    }
+    assemble(config, &plan, pages)
 }
 
 async fn fetch_page(
@@ -154,7 +135,6 @@ async fn fetch_page(
             Ok(Page {
                 pull_requests: search.nodes.iter().filter_map(into_pull_request).collect(),
                 issue_count: search.issue_count,
-                remaining: data.rate_limit.map_or(i64::MAX, |limit| limit.remaining),
             })
         }
         Ok((_, errors)) => Err(first_message(&errors)),
@@ -198,17 +178,14 @@ fn assemble(config: &SectionConfig, plan: &QueryPlan, pages: Vec<Page>) -> Secti
     }
 }
 
-fn failed(config: &SectionConfig, message: String) -> Fetched {
-    Fetched {
-        remaining: i64::MAX,
-        result: SectionResult {
-            config: config.clone(),
-            pull_requests: Vec::new(),
-            total_count: 0,
-            count_is_partial: false,
-            error: Some(message),
-            home_sections: None,
-        },
+fn failed(config: &SectionConfig, message: String) -> SectionResult {
+    SectionResult {
+        config: config.clone(),
+        pull_requests: Vec::new(),
+        total_count: 0,
+        count_is_partial: false,
+        error: Some(message),
+        home_sections: None,
     }
 }
 
@@ -337,19 +314,11 @@ struct GraphQLError {
 #[derive(Deserialize)]
 struct ViewerData {
     viewer: Actor,
-    #[serde(rename = "rateLimit")]
-    rate_limit: RateLimit,
-}
-
-#[derive(Deserialize)]
-struct RateLimit {
-    remaining: i64,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SearchData {
-    rate_limit: Option<RateLimit>,
     search: Option<SearchResult>,
 }
 
@@ -495,11 +464,7 @@ mod tests {
     }
 
     fn page(rows: &[Value], issue_count: i64) -> Page {
-        Page {
-            pull_requests: rows.iter().filter_map(into_pull_request).collect(),
-            issue_count,
-            remaining: 4999,
-        }
+        Page { pull_requests: rows.iter().filter_map(into_pull_request).collect(), issue_count }
     }
 
     fn section(query: &str, limit: u32) -> SectionConfig {

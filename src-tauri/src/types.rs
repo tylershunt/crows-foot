@@ -121,7 +121,6 @@ pub struct SectionResult {
 pub struct DashboardResponse {
     pub viewer: Actor,
     pub sections: Vec<SectionResult>,
-    pub rate_limit_remaining: i64,
 }
 
 /// A config paired with the file it was read from, which the settings panel shows.
