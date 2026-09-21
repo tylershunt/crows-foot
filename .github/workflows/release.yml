@@ -36,9 +36,11 @@ jobs:
       - run: npm test
 
       - name: Build the dmg and draft its release
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           args: --target universal-apple-darwin
           tagName: ${{ inputs.tag || github.ref_name }}
@@ -51,9 +53,10 @@ jobs:
             **right-click → Open**, or **System Settings → Privacy & Security
             → Open Anyway**. Every launch after that is an ordinary one.
 
-            Crow's Foot reads the token the [`gh` CLI](https://cli.github.com)
-            already stores, so run `gh auth login` before the first launch if
-            you have not already.
+            Later versions install from inside the app. Crow's Foot reads the
+            token the [`gh` CLI](https://cli.github.com) already stores, so
+            run `gh auth login` before the first launch if you have not
+            already.
           releaseDraft: true
           prerelease: false
 
@@ -65,17 +68,6 @@ jobs:
           app="src-tauri/target/universal-apple-darwin/release/bundle/macos/Crow's Foot.app"
           codesign --verify --deep --strict --verbose=2 "$app"
           codesign -dv "$app" 2>&1 | grep "Sealed Resources"
-
-      # The tarball of the same app, which tauri-action adds for updaters we do
-      # not serve, only makes a visitor choose between two identical downloads.
-      - name: Leave the dmg as the only download
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ inputs.tag || github.ref_name }}
-        run: |
-          gh release view "$TAG" --json assets \
-            -q '.assets[].name | select(endswith(".app.tar.gz"))' |
-            while read -r asset; do gh release delete-asset "$TAG" "$asset" --yes; done
 
       - name: Publish the release
         env:

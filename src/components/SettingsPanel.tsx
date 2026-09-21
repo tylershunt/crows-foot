@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import type { AppConfig, GlobalFilter, SectionConfig } from "../../shared/types.js";
 import { slugify } from "../lib/format.js";
 import { titleBar } from "../lib/titlebar.js";
+import { checkForUpdate, type Update } from "../lib/update.js";
 import { QueryPreview } from "./QueryPreview.js";
+import { InstallUpdate } from "./UpdateBanner.js";
 import { ArrowUpIcon, ChevronDownIcon, CrowFootIcon, PlusIcon, TrashIcon } from "./icons.js";
 
 const GLOBAL_FILTER_SUGGESTIONS = [
@@ -63,6 +66,8 @@ interface SettingsPanelProps {
   onSave: (config: AppConfig) => Promise<void>;
   onReset: () => Promise<void>;
   onClose: () => void;
+  update: Update | null;
+  onUpdate: (update: Update | null) => void;
 }
 
 export function SettingsPanel({
@@ -72,6 +77,8 @@ export function SettingsPanel({
   onSave,
   onReset,
   onClose,
+  update,
+  onUpdate,
 }: SettingsPanelProps) {
   const [draft, setDraft] = useState<AppConfig>(config);
   const [paletteOpen, setPaletteOpen] = useState(
@@ -79,12 +86,19 @@ export function SettingsPanel({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateNote, setUpdateNote] = useState<string | null>(null);
   const activeQueryRef = useRef<HTMLTextAreaElement | null>(null);
   const focusedQueryRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     localStorage.setItem(PALETTE_STORAGE_KEY, paletteOpen ? "open" : "folded");
   }, [paletteOpen]);
+
+  useEffect(() => {
+    void getVersion().then(setVersion).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -105,6 +119,20 @@ export function SettingsPanel({
   }, [focusSectionId]);
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(config), [draft, config]);
+
+  async function lookForUpdate() {
+    setCheckingUpdate(true);
+    setUpdateNote(null);
+    try {
+      const found = await checkForUpdate();
+      onUpdate(found);
+      setUpdateNote(found ? null : "This is the latest.");
+    } catch (checkError) {
+      setUpdateNote(checkError instanceof Error ? checkError.message : String(checkError));
+    } finally {
+      setCheckingUpdate(false);
+    }
+  }
 
   function updateSection(index: number, patch: Partial<SectionConfig>) {
     setDraft((current) => ({
@@ -295,6 +323,29 @@ export function SettingsPanel({
             />
             <span className="text-ink-500 dark:text-ink-400">seconds</span>
           </label>
+
+          <div className="flex items-center gap-3 rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm dark:border-ink-800 dark:bg-ink-900">
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-ink-700 dark:text-ink-200">
+                This build{version ? ` is ${version}` : ""}
+              </p>
+              {updateNote && (
+                <p className="mt-0.5 text-xs text-ink-500 dark:text-ink-400">{updateNote}</p>
+              )}
+            </div>
+            {update ? (
+              <InstallUpdate update={update} />
+            ) : (
+              <button
+                type="button"
+                onClick={() => void lookForUpdate()}
+                disabled={checkingUpdate}
+                className="shrink-0 rounded-lg border border-ink-200 px-3 py-1.5 text-sm text-ink-600 transition hover:border-sheen-400 hover:text-ink-900 disabled:opacity-60 dark:border-ink-700 dark:text-ink-300 dark:hover:border-sheen-500 dark:hover:text-white"
+              >
+                {checkingUpdate ? "Checking…" : "Check for updates"}
+              </button>
+            )}
+          </div>
 
           {draft.sections.map((section, index) => (
             <div

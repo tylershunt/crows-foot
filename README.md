@@ -15,7 +15,7 @@ has no runtime of its own to install.
 Grab the `.dmg` from [the latest
 release](https://github.com/tylershunt/crows-foot/releases/latest) — one
 universal build for Apple Silicon and Intel — and drag Crow's Foot to
-Applications.
+Applications. Later versions install from inside the app.
 
 It is ad-hoc signed but not notarized, so macOS asks about it once: open it the
 first time with right-click → **Open**, or **System Settings → Privacy &
@@ -44,13 +44,17 @@ npm run dev     # the app, with the interface hot-reloading
 npm run build   # Crow's Foot.app and a .dmg, in src-tauri/target/release/bundle
 ```
 
+A packaged build signs an updater payload. Set `TAURI_SIGNING_PRIVATE_KEY` to
+the private key (or a path to it) before `npm run build`.
+
 `npm test` runs both suites: the interface's tests under Node's test runner and
 the core's under `cargo test`. The tests that call GitHub are ignored by
 default; `cargo test --manifest-path src-tauri/Cargo.toml -- --ignored` runs
 them against your own credential.
 
 Pushing a `v*` tag builds the universal `.dmg` on CI and publishes it as a
-release, once `codesign` confirms the bundle is sealed.
+release, once `codesign` confirms the bundle is sealed. The same release holds
+`latest.json` and a `.app.tar.gz`, which a running copy reads to update itself.
 
 ### Where things live
 
@@ -294,6 +298,12 @@ GitHub. Change a section's query when you want different results.
 
 The dashboard refetches on the interval set in Settings (120 seconds by
 default), whenever the window regains focus, and when you press `r`.
+
+## Updating
+
+A packaged build checks GitHub's latest release when it opens. If a newer one
+is published, a banner offers to install it and restart. Settings can ask the
+same question on demand.
 
 ## Theme
 

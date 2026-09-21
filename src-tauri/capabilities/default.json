@@ -1,12 +1,14 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Lets the dashboard move its own window, badge its dock icon, and hand pull request links to the system browser.",
+  "description": "Lets the dashboard move its own window, badge its dock icon, hand pull request links to the system browser, and install a newer build of itself.",
   "windows": ["main"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
     "core:window:allow-set-badge-count",
+    "updater:default",
+    "process:allow-restart",
     {
       "identifier": "opener:allow-open-url",
       "allow": [{ "url": "https://github.com/*" }]

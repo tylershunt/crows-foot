@@ -3,6 +3,7 @@ import type { AppConfig, DashboardResponse, PullRequest, SectionResult } from ".
 import { Section } from "./components/Section.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
 import { Sidebar } from "./components/Sidebar.js";
+import { UpdateBanner } from "./components/UpdateBanner.js";
 import { AlertIcon, FilterIcon, RefreshIcon, SearchIcon } from "./components/icons.js";
 import { retainPullRequests } from "../shared/dashboard.js";
 import { enabledGlobalFilters } from "../shared/query.js";
@@ -12,6 +13,7 @@ import { badgeCount, showOnTheDock } from "./lib/badge.js";
 import { openExternal } from "./lib/external.js";
 import { stackColors } from "./lib/stackColor.js";
 import { titleBar } from "./lib/titlebar.js";
+import { checkForUpdate, type Update } from "./lib/update.js";
 
 type Theme = "light" | "dark";
 
@@ -33,6 +35,7 @@ export function App() {
   const [theme, setTheme] = useState<Theme>(() =>
     document.documentElement.classList.contains("dark") ? "dark" : "light",
   );
+  const [update, setUpdate] = useState<Update | null>(null);
   const [, setTick] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -72,6 +75,10 @@ export function App() {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [refresh]);
+
+  useEffect(() => {
+    void checkForUpdate().then(setUpdate).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => setTick((value) => value + 1), 30_000);
@@ -243,6 +250,8 @@ export function App() {
           </header>
 
           <div className="flex-1 overflow-y-auto px-6 py-5">
+            {update && <UpdateBanner update={update} onDismiss={() => setUpdate(null)} />}
+
             {error && (
               <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
                 <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
@@ -291,6 +300,8 @@ export function App() {
           focusSectionId={settingsFocus}
           onSave={applyConfig}
           onReset={resetConfig}
+          update={update}
+          onUpdate={setUpdate}
           onClose={() => {
             setSettingsOpen(false);
             setSettingsFocus(null);
