@@ -63,6 +63,8 @@ interface SettingsPanelProps {
   config: AppConfig;
   configPath: string;
   focusSectionId: string | null;
+  theme: "light" | "dark";
+  onTheme: (theme: "light" | "dark") => void;
   onSave: (config: AppConfig) => Promise<void>;
   onReset: () => Promise<void>;
   onClose: () => void;
@@ -74,6 +76,8 @@ export function SettingsPanel({
   config,
   configPath,
   focusSectionId,
+  theme,
+  onTheme,
   onSave,
   onReset,
   onClose,
@@ -227,10 +231,8 @@ export function SettingsPanel({
         className="flex h-full w-full max-w-2xl flex-col bg-ink-50 shadow-2xl dark:bg-ink-950"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="feather-sheen h-0.5 w-full" />
-
         <header
-          {...titleBar("flex items-center justify-between border-b border-ink-200 px-5 pb-4 dark:border-ink-800")}
+          {...titleBar("flex items-center justify-between border-b border-ink-200 px-5 py-3 dark:border-ink-800")}
         >
           <div>
             <h2 className="text-base font-semibold text-ink-900 dark:text-white">Sections &amp; filters</h2>
@@ -308,6 +310,16 @@ export function SettingsPanel({
               ))}
             </div>
           </div>
+
+          <label className="flex items-center gap-3 rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm dark:border-ink-800 dark:bg-ink-900">
+            <span className="font-medium text-ink-700 dark:text-ink-200">Light mode</span>
+            <input
+              type="checkbox"
+              className="ml-auto"
+              checked={theme === "light"}
+              onChange={(event) => onTheme(event.target.checked ? "light" : "dark")}
+            />
+          </label>
 
           <label className="flex items-center gap-3 rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm dark:border-ink-800 dark:bg-ink-900">
             <span className="font-medium text-ink-700 dark:text-ink-200">Auto-refresh every</span>

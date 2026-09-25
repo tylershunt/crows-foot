@@ -1,7 +1,7 @@
 import type { PullRequest, SectionResult } from "../../shared/types.js";
 import { SNOOZED_SECTION } from "../../shared/snoozed.js";
 import { AlertIcon, ChevronDownIcon, FeatherIcon, FlameIcon, SettingsIcon, StackIcon } from "./icons.js";
-import { groupIntoStacks } from "../lib/stacks.js";
+import { groupIntoStacks, type StackGroup } from "../lib/stacks.js";
 import { PullRequestRow } from "./PullRequestRow.js";
 import { SectionMarker } from "./SectionMarker.js";
 
@@ -15,6 +15,8 @@ interface SectionProps {
   onToggleSnooze: (pullRequest: PullRequest, snoozed: boolean) => void;
   /** The color marking the stack a pull request belongs to, across all sections. */
   stackColor: (pullRequest: PullRequest) => string;
+  /** Pull requests on the dashboard that this section is not showing. */
+  otherPullRequests: PullRequest[];
   /** Draws skeleton rows while a fetch is in flight and no results are cached yet. */
   loading: boolean;
 }
@@ -27,11 +29,12 @@ export function Section({
   onBurnDown,
   onToggleSnooze,
   stackColor,
+  otherPullRequests,
   loading,
 }: SectionProps) {
   const { config, pullRequests, totalCount, countIsPartial, error } = section;
   const hiddenCount = totalCount - pullRequests.length;
-  const groups = groupIntoStacks(pullRequests);
+  const groups = groupIntoStacks(pullRequests, otherPullRequests);
   const ordered = groups.flatMap((group) => group.rows.map((row) => row.pullRequest));
   const snoozed = config.id === SNOOZED_SECTION.id;
 
@@ -49,14 +52,14 @@ export function Section({
               className={`h-4 w-4 shrink-0 text-ink-400 transition-transform ${collapsed ? "-rotate-90" : ""}`}
             />
             <SectionMarker config={config} glow className="h-4 w-4 shrink-0 text-sm" />
-            <h2 className="truncate text-sm font-semibold text-ink-900 dark:text-ink-100">{config.title}</h2>
+            <h2 className="truncate text-xs font-semibold leading-4 text-ink-900 dark:text-ink-100">{config.title}</h2>
             <span
               title={
                 countIsPartial
                   ? `At least ${totalCount}: this section's query is answered partly here, over the first ${config.limit} GitHub returned`
                   : undefined
               }
-              className="shrink-0 rounded-full bg-ink-100 px-2 py-0.5 text-xs font-medium tabular-nums text-ink-600 dark:bg-ink-800 dark:text-ink-300"
+              className="shrink-0 rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-medium tabular-nums text-ink-600 dark:bg-ink-800 dark:text-ink-300"
             >
               {totalCount}
               {countIsPartial && "+"}
@@ -86,7 +89,7 @@ export function Section({
         </header>
 
         {!collapsed && (
-          <div>
+          <div className="[&>:last-child]:border-b-0 [&>:last-child>:last-child]:border-b-0">
             {error ? (
               <div className="flex items-start gap-2 px-4 py-4 text-sm text-rose-600 dark:text-rose-400">
                 <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
@@ -106,44 +109,26 @@ export function Section({
               <>
                 {groups.map((group) => {
                   const color = stackColor(group.rows[0]!.pullRequest);
-
-                  return group.rows.length === 1 ? (
+                  const row = (entry: (typeof group.rows)[number]) => (
                     <PullRequestRow
-                      key={group.id}
-                      pr={group.rows[0]!.pullRequest}
+                      key={entry.pullRequest.id}
+                      pr={entry.pullRequest}
                       snoozed={snoozed}
                       onToggleSnooze={onToggleSnooze}
-                      homeSection={section.homeSections?.[group.rows[0]!.pullRequest.id]}
-                      detached={group.rows[0]!.detached}
+                      homeSection={section.homeSections?.[entry.pullRequest.id]}
+                      stackedOn={entry.parent}
+                      detached={entry.detached}
                       stackColor={color}
                     />
-                  ) : (
+                  );
+
+                  return drawsBracket(group) ? (
                     <div key={group.id} className="relative">
-                      <span
-                        role="img"
-                        aria-label={`Stack of ${group.rows.length} pull requests`}
-                        className="pointer-events-none absolute left-[4px] top-px z-10"
-                        style={{ color, opacity: 0.8 }}
-                      >
-                        <StackIcon className="h-3 w-3" />
-                      </span>
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute bottom-2.5 left-[9px] top-[14px] z-10 w-2 border-y-2 border-l-2"
-                        style={{ borderColor: color, opacity: 0.55 }}
-                      />
-                      {group.rows.map((row) => (
-                        <PullRequestRow
-                          key={row.pullRequest.id}
-                          pr={row.pullRequest}
-                          snoozed={snoozed}
-                          onToggleSnooze={onToggleSnooze}
-                          homeSection={section.homeSections?.[row.pullRequest.id]}
-                          stackedOn={row.parent}
-                          stackColor={color}
-                        />
-                      ))}
+                      <StackBracket group={group} color={color} />
+                      {group.rows.map(row)}
                     </div>
+                  ) : (
+                    row(group.rows[0]!)
                   );
                 })}
                 {hiddenCount > 0 && (
@@ -157,6 +142,43 @@ export function Section({
         )}
       </div>
     </section>
+  );
+}
+
+function drawsBracket(group: StackGroup): boolean {
+  return group.rows.length > 1 || group.parentElsewhere || group.childElsewhere;
+}
+
+function StackBracket({ group, color }: { group: StackGroup; color: string }) {
+  const continues = group.parentElsewhere || group.childElsewhere;
+  const label = continues ? "Part of a stack" : `Stack of ${group.rows.length} pull requests`;
+
+  return (
+    <>
+      {!group.parentElsewhere && (
+        <span
+          role="img"
+          aria-label={label}
+          className="pointer-events-none absolute left-[4px] top-px z-10"
+          style={{ color, opacity: 0.8 }}
+        >
+          <StackIcon className="h-3 w-3" />
+        </span>
+      )}
+      <span
+        role={group.parentElsewhere ? "img" : undefined}
+        aria-label={group.parentElsewhere ? label : undefined}
+        aria-hidden={group.parentElsewhere ? undefined : true}
+        className={[
+          "pointer-events-none absolute left-[9px] z-10 w-2 border-l-2",
+          group.parentElsewhere ? "top-1" : "top-[14px]",
+          group.childElsewhere ? "bottom-1" : "bottom-2.5",
+          group.parentElsewhere ? "" : "border-t-2",
+          group.childElsewhere ? "" : "border-b-2",
+        ].join(" ")}
+        style={{ borderColor: color, opacity: 0.55 }}
+      />
+    </>
   );
 }
 

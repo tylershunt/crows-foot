@@ -46,8 +46,8 @@ body {
 }
 
 /*
- * The wordmark carries the same iridescence as `.feather-sheen`, but needs
- * darker stops on a light background to stay legible as text.
+ * The wordmark's iridescence takes darker stops on a light background to stay
+ * legible as text.
  */
 .wordmark-sheen {
   background-image: linear-gradient(100deg, #6d28d9 0%, #7c4dff 30%, #0d9488 70%, #b45309 100%);
@@ -69,18 +69,6 @@ body {
     var(--color-glint-400) 100%
   );
 }
-
-/* The iridescent sweep used on the logo mark and the app's top edge. */
-.feather-sheen {
-  background-image: linear-gradient(
-    100deg,
-    var(--color-sheen-600) 0%,
-    var(--color-sheen-400) 28%,
-    var(--color-plume-400) 58%,
-    var(--color-glint-400) 100%
-  );
-}
-
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

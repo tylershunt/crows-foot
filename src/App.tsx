@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AppConfig, DashboardResponse, PullRequest, SectionResult } from "../shared/types.js";
 import { Section } from "./components/Section.js";
+import { Logo } from "./components/Logo.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
-import { Sidebar } from "./components/Sidebar.js";
 import { UpdateBanner } from "./components/UpdateBanner.js";
-import { AlertIcon, FilterIcon, RefreshIcon, SearchIcon } from "./components/icons.js";
+import { AlertIcon, FilterIcon, RefreshIcon, SearchIcon, SettingsIcon } from "./components/icons.js";
 import { retainPullRequests } from "../shared/dashboard.js";
 import { enabledGlobalFilters } from "../shared/query.js";
 import { SNOOZED_SECTION } from "../shared/snoozed.js";
@@ -12,12 +12,10 @@ import { api } from "./lib/api.js";
 import { badgeCount, showOnTheDock } from "./lib/badge.js";
 import { openExternal } from "./lib/external.js";
 import { stackColors } from "./lib/stackColor.js";
-import { titleBar } from "./lib/titlebar.js";
+import { BESIDE_WINDOW_CONTROLS, titleBar } from "./lib/titlebar.js";
 import { checkForUpdate, type Update } from "./lib/update.js";
 
 type Theme = "light" | "dark";
-
-const SIDEBAR_STORAGE_KEY = "crows-foot-sidebar";
 
 export function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -29,9 +27,6 @@ export function App() {
   const [filterText, setFilterText] = useState("");
   const [settingsFocus, setSettingsFocus] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(
-    () => localStorage.getItem(SIDEBAR_STORAGE_KEY) === "collapsed",
-  );
   const [theme, setTheme] = useState<Theme>(() =>
     document.documentElement.classList.contains("dark") ? "dark" : "light",
   );
@@ -94,8 +89,6 @@ export function App() {
         searchRef.current?.focus();
       } else if (event.key === "r") {
         void refresh();
-      } else if (event.key === "b") {
-        setSidebarCollapsed((current) => !current);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -106,10 +99,6 @@ export function App() {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("crows-foot-theme", theme);
   }, [theme]);
-
-  useEffect(() => {
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? "collapsed" : "expanded");
-  }, [sidebarCollapsed]);
 
   // The badge counts what GitHub returned, so a filter typed into the box narrows
   // the view without pretending the rest of the pile went away.
@@ -190,114 +179,139 @@ export function App() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="feather-sheen h-0.5 w-full shrink-0" />
-
-      <div className="flex min-h-0 flex-1">
-        <Sidebar
-          viewer={dashboard?.viewer ?? null}
-          sections={sections}
-          theme={theme}
-          collapsed={sidebarCollapsed}
-          onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
-          onToggleTheme={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
-          onOpenSettings={() => {
-            setSettingsFocus(null);
-            setSettingsOpen(true);
-          }}
-        />
-
-        <main className="flex min-w-0 flex-1 flex-col">
-          <header
-            {...titleBar(
-              "sticky top-0 z-10 flex items-center gap-3 border-b border-ink-200 bg-ink-100/90 px-6 pb-3 backdrop-blur dark:border-ink-800 dark:bg-ink-950/90",
-            )}
-          >
-            <div className="relative min-w-0 max-w-md flex-1">
-              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-              <input
-                ref={searchRef}
-                value={filterText}
-                onChange={(event) => setFilterText(event.target.value)}
-                placeholder="Filter loaded pull requests…  (/)"
-                className="w-full rounded-lg border border-ink-200 bg-white py-1.5 pl-9 pr-3 text-sm placeholder:text-ink-400 focus:border-sheen-400 focus:outline-none dark:border-ink-800 dark:bg-ink-900"
-              />
-            </div>
-
-            {activeGlobalFilters.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSettingsFocus(null);
-                  setSettingsOpen(true);
-                }}
-                title={`Narrowing every section:\n${activeGlobalFilters.map((f) => f.query).join("\n")}`}
-                className="flex shrink-0 items-center gap-1.5 rounded-full bg-sheen-500/10 px-2.5 py-1 text-xs text-sheen-600 transition hover:bg-sheen-500/20 dark:text-sheen-300"
+      <main className="flex min-h-0 flex-1 flex-col">
+        <header
+          {...titleBar(
+            `sticky top-0 z-10 flex shrink-0 items-center gap-3 border-b border-ink-200 bg-ink-100/90 pr-4 ${BESIDE_WINDOW_CONTROLS} backdrop-blur dark:border-ink-800 dark:bg-ink-950/90`,
+          )}
+        >
+          <div className="flex shrink-0 items-center gap-2.5">
+            <Logo className="h-7 w-7" />
+            <p className="wordmark-sheen bg-clip-text font-script text-2xl leading-tight text-transparent">
+              Crow&rsquo;s Foot
+            </p>
+            {dashboard?.viewer && (
+              <a
+                href={dashboard.viewer.url}
+                target="_blank"
+                rel="noreferrer"
+                title={dashboard.viewer.login}
+                className="shrink-0 rounded-full transition hover:ring-2 hover:ring-sheen-400"
               >
-                <FilterIcon className="h-3 w-3" />
-                {activeGlobalFilters.length} global filter{activeGlobalFilters.length === 1 ? "" : "s"}
-              </button>
+                <img
+                  src={dashboard.viewer.avatarUrl}
+                  alt={dashboard.viewer.login}
+                  className="h-7 w-7 rounded-full ring-1 ring-sheen-400/40"
+                />
+              </a>
             )}
+          </div>
 
+          <div className="relative min-w-0 max-w-md flex-1">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+            <input
+              ref={searchRef}
+              value={filterText}
+              onChange={(event) => setFilterText(event.target.value)}
+              placeholder="Filter loaded pull requests…  (/)"
+              className="w-full rounded-lg border border-ink-200 bg-white py-1.5 pl-9 pr-3 text-xs placeholder:text-ink-400 focus:border-sheen-400 focus:outline-none dark:border-ink-800 dark:bg-ink-900"
+            />
+          </div>
+
+          {activeGlobalFilters.length > 0 && (
             <button
               type="button"
-              onClick={() => void refresh()}
-              title="Refresh (r)"
-              className="flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-sm text-ink-600 transition hover:border-sheen-400 hover:text-ink-900 dark:border-ink-800 dark:bg-ink-900 dark:text-ink-300 dark:hover:border-sheen-500 dark:hover:text-white"
+              onClick={() => {
+                setSettingsFocus(null);
+                setSettingsOpen(true);
+              }}
+              title={`Narrowing every section:\n${activeGlobalFilters.map((f) => f.query).join("\n")}`}
+              className="flex shrink-0 items-center gap-1.5 rounded-full bg-sheen-500/10 px-2.5 py-1 text-xs text-sheen-600 transition hover:bg-sheen-500/20 dark:text-sheen-300"
             >
-              <RefreshIcon className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-              Refresh
+              <FilterIcon className="h-3 w-3" />
+              {activeGlobalFilters.length} global filter{activeGlobalFilters.length === 1 ? "" : "s"}
             </button>
-          </header>
+          )}
 
-          <div className="flex-1 overflow-y-auto px-6 py-5">
-            {update && <UpdateBanner update={update} onDismiss={() => setUpdate(null)} />}
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            title="Refresh (r)"
+            className="flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-xs text-ink-600 transition hover:border-sheen-400 hover:text-ink-900 dark:border-ink-800 dark:bg-ink-900 dark:text-ink-300 dark:hover:border-sheen-500 dark:hover:text-white"
+          >
+            <RefreshIcon className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
 
-            {error && (
-              <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
-                <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
+          <button
+            type="button"
+            onClick={() => {
+              setSettingsFocus(null);
+              setSettingsOpen(true);
+            }}
+            title="Settings"
+            aria-label="Settings"
+            className="ml-auto shrink-0 rounded-lg p-1.5 text-ink-500 transition hover:bg-ink-200 hover:text-ink-800 dark:text-ink-400 dark:hover:bg-ink-800 dark:hover:text-ink-100"
+          >
+            <SettingsIcon className="h-4 w-4" />
+          </button>
+        </header>
 
-            <div className="mx-auto max-w-5xl space-y-4">
-              {sections.map((section) => {
-                const collapsed = collapsedOverrides[section.config.id] ?? startsCollapsed(section);
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {update && <UpdateBanner update={update} onDismiss={() => setUpdate(null)} />}
 
-                return (
-                  <Section
-                    key={section.config.id}
-                    section={section}
-                    loading={refreshing}
-                    collapsed={collapsed}
-                    onToggle={() =>
-                      setCollapsedOverrides((current) => ({ ...current, [section.config.id]: !collapsed }))
-                    }
-                    onEdit={() => {
-                      setSettingsFocus(section.config.id);
-                      setSettingsOpen(true);
-                    }}
-                    onBurnDown={burnDown}
-                    onToggleSnooze={toggleSnooze}
-                    stackColor={stackColor}
-                  />
-                );
-              })}
-
-              {config && config.sections.length === 0 && (
-                <p className="py-16 text-center text-sm text-ink-400">
-                  No sections configured yet. Open Settings to add one.
-                </p>
-              )}
+          {error && (
+            <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+              <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
             </div>
+          )}
+
+          <div className="mx-auto max-w-5xl space-y-4">
+            {sections.map((section) => {
+              const collapsed = collapsedOverrides[section.config.id] ?? startsCollapsed(section);
+              const shown = new Set(section.pullRequests.map((pullRequest) => pullRequest.id));
+              const otherPullRequests = (dashboard?.sections ?? [])
+                .flatMap((other) => other.pullRequests)
+                .filter((pullRequest) => !shown.has(pullRequest.id));
+
+              return (
+                <Section
+                  key={section.config.id}
+                  section={section}
+                  loading={refreshing}
+                  collapsed={collapsed}
+                  onToggle={() =>
+                    setCollapsedOverrides((current) => ({ ...current, [section.config.id]: !collapsed }))
+                  }
+                  onEdit={() => {
+                    setSettingsFocus(section.config.id);
+                    setSettingsOpen(true);
+                  }}
+                  onBurnDown={burnDown}
+                  onToggleSnooze={toggleSnooze}
+                  stackColor={stackColor}
+                  otherPullRequests={otherPullRequests}
+                />
+              );
+            })}
+
+            {config && config.sections.length === 0 && (
+              <p className="py-16 text-center text-sm text-ink-400">
+                No sections configured yet. Open Settings to add one.
+              </p>
+            )}
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
 
       {settingsOpen && config && (
         <SettingsPanel
           config={config}
           configPath={configPath}
           focusSectionId={settingsFocus}
+          theme={theme}
+          onTheme={setTheme}
           onSave={applyConfig}
           onReset={resetConfig}
           update={update}

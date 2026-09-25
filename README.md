@@ -69,7 +69,7 @@ macOS.
 
 ## Configuring sections
 
-Click **Settings** in the sidebar, or the gear on any section header to jump
+Click the gear at the right of the top bar, or the gear on any section header to jump
 straight to that section. You can rename sections, edit their query, reorder
 them, set a per-section result limit and accent color, and choose whether a
 section starts collapsed and whether it counts on the dock badge. A section
@@ -194,8 +194,8 @@ you have not seen, the pull request state, the author's avatar, the title, and
 then the repo,
 number, author, and diff size. Titles too long for the window get a tooltip
 with the full text. On the right: labels, comment count, reviewer
-avatars (green ring means they approved, gray initials means they still owe a
-review), the overall review decision, the CI check rollup, and how long ago the
+avatars (a green ring approved, a red ring requested changes, a gray ring
+commented, and gray initials still owe a review), the overall review decision, the CI check rollup, and how long ago the
 pull request was last updated.
 
 Clicking a row opens it in your browser, where you are already signed in to
@@ -248,13 +248,6 @@ would not have shown it anyway.
 Snoozes live in `snoozes.db`, a SQLite file beside your config, keyed by the
 pull request's GitHub node id. Deleting the file un-snoozes everything.
 
-## Sidebar
-
-Press `b`, or click the panel button beside the wordmark, to collapse the
-sidebar to an icon rail. The rail keeps every section's color and count, so you
-can still see what is waiting and jump to a section; hovering a track names it.
-The choice survives a restart.
-
 ## Stacks
 
 Pull requests stacked on one another are moved next to each other and joined by
@@ -263,10 +256,9 @@ pull request it sits on, as `on #1234`. Hovering that gives the parent's title.
 
 A stack's color comes from a fixed palette, chosen by the number of the pull
 request at the bottom of the stack, so a stack that spreads across sections —
-one member approved, another still waiting — wears one color in all of them,
-and the stack icon on a member sitting alone in a section carries it too. The
-palette holds eight hues, so two stacks whose bottom numbers are a multiple of
-eight apart share a color; consecutive ones never do.
+one member approved, another still waiting — wears one color in all of them.
+The palette holds eight hues, so two stacks whose bottom numbers are a multiple
+of eight apart share a color; consecutive ones never do.
 
 Naming the parent rather than indenting means sibling branches read correctly:
 two pull requests that both build on `#1234` each say `on #1234`, which says
@@ -277,10 +269,12 @@ merges into that one's branch in the same repository. That is how Graphite,
 `gh`, and hand-built stacks all express the relationship, so no extra tooling
 or token is involved.
 
-Only the members that a section's own query returned can be grouped. A pull
-request built on a branch whose pull request is not in that section is instead
-marked with a stack icon alone, in its stack's color, so it is not mistaken for
-standalone work; hover it to see the branch it builds on.
+Only the members a section's own query returned are joined as one bar. When
+the parent or a child is in another section, that end of the bar is left open,
+and a member sitting in a section by itself still carries the open piece. A
+pull request built on a branch whose pull request is not on the dashboard is
+marked with a stack icon alone, in its stack's color; hover it to see the
+branch it builds on.
 
 ## Keyboard shortcuts
 
@@ -288,7 +282,6 @@ standalone work; hover it to see the branch it builds on.
 | ----- | ------------------------------- |
 | `/`   | Focus the filter box            |
 | `r`   | Refresh                         |
-| `b`   | Collapse or expand the sidebar  |
 | `Esc` | Close the settings panel        |
 
 The filter box narrows the pull requests already on screen; it does not re-query
@@ -307,15 +300,14 @@ same question on demand.
 
 ## Theme
 
-Each section is marked by a crow's track in its accent color, in the sidebar and
-on the section header. The color is per-section and set in Settings.
+Each section is marked by a crow's track in its accent color on the section header. The color is per-section and set in Settings.
 
 The palette follows a crow: `ink` for the cool near-black neutrals, `sheen` for
 the violet iridescence on the wing, `plume` for its teal edge, and `glint` for
 the gold catchlight in the eye. These are defined in `src/index.css` and are
 ordinary Tailwind color scales, so `bg-ink-900` and `text-sheen-400` work the
-way you would expect. Light and dark modes are both supported; the toggle is at
-the bottom of the sidebar.
+way you would expect. Light and dark modes are both supported; the switch is
+in Settings.
 
 The wordmark is set in Great Vibes (loaded from Google Fonts, falling back to
 Snell Roundhand and Apple Chancery) with the iridescence clipped into the

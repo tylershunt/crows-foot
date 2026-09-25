@@ -3,15 +3,16 @@ import type { PullRequest } from "../../shared/types.js";
 export interface StackRow {
   pullRequest: PullRequest;
   /**
-   * The pull request this one is stacked on, when that one is also present.
+   * The pull request this one is stacked on, when that one was given.
    *
    * Two rows sharing a parent are on sibling branches: both build on it, and
-   * neither builds on the other.
+   * neither builds on the other. The parent may sit in this group or among the
+   * other pull requests.
    */
   parent: PullRequest | null;
   /**
-   * The pull request builds on another branch, but that branch's pull request is
-   * not among these results, so its stack cannot be drawn.
+   * The pull request builds on another branch, and that branch's pull request
+   * was not given.
    */
   detached: boolean;
 }
@@ -25,6 +26,10 @@ export interface StackRow {
 export interface StackGroup {
   id: string;
   rows: StackRow[];
+  /** The parent of this group is among the other pull requests. */
+  parentElsewhere: boolean;
+  /** A child of this group is among the other pull requests. */
+  childElsewhere: boolean;
 }
 
 /**
@@ -34,22 +39,22 @@ export interface StackGroup {
  * A pull request is stacked on another when it merges into that one's branch
  * within the same repository, which is how Graphite, `gh`, and hand-built
  * stacks all express the relationship.
+ *
+ * `elsewhere` holds pull requests shown apart from this list, such as the other
+ * sections. They name a parent and mark where the stack continues, and they are
+ * not grouped into it.
  */
-export function groupIntoStacks(pullRequests: PullRequest[]): StackGroup[] {
+export function groupIntoStacks(pullRequests: PullRequest[], elsewhere: PullRequest[] = []): StackGroup[] {
   const parents = parentsOf(pullRequests);
-
-  const children = new Map<string, PullRequest[]>();
-  for (const pullRequest of pullRequests) {
-    const parent = parents.get(pullRequest.id);
-    if (!parent) continue;
-    children.set(parent.id, [...(children.get(parent.id) ?? []), pullRequest]);
-  }
+  const knownParents = parentsOf([...elsewhere, ...pullRequests]);
+  const children = childrenOf(pullRequests, parents);
+  const knownChildren = childrenOf([...pullRequests, ...elsewhere], knownParents);
 
   const placed = new Set<string>();
   const collect = (current: PullRequest, rows: StackRow[]) => {
     if (placed.has(current.id)) return;
     placed.add(current.id);
-    const parent = parents.get(current.id) ?? null;
+    const parent = knownParents.get(current.id) ?? null;
     rows.push({
       pullRequest: current,
       parent,
@@ -62,7 +67,7 @@ export function groupIntoStacks(pullRequests: PullRequest[]): StackGroup[] {
   const groupFrom = (pullRequest: PullRequest) => {
     const rows: StackRow[] = [];
     collect(pullRequest, rows);
-    if (rows.length > 0) groups.push({ id: pullRequest.id, rows });
+    if (rows.length > 0) groups.push(withEnds(rows, knownParents, knownChildren));
   };
 
   for (const pullRequest of pullRequests) {
@@ -75,6 +80,31 @@ export function groupIntoStacks(pullRequests: PullRequest[]): StackGroup[] {
   }
 
   return groups;
+}
+
+function withEnds(
+  rows: StackRow[],
+  knownParents: Map<string, PullRequest>,
+  knownChildren: Map<string, PullRequest[]>,
+): StackGroup {
+  const members = new Set(rows.map((row) => row.pullRequest.id));
+  const parent = knownParents.get(rows[0]!.pullRequest.id);
+  const parentElsewhere = parent != null && !members.has(parent.id);
+  const childElsewhere = rows.some((row) =>
+    (knownChildren.get(row.pullRequest.id) ?? []).some((child) => !members.has(child.id)),
+  );
+
+  return { id: rows[0]!.pullRequest.id, rows, parentElsewhere, childElsewhere };
+}
+
+function childrenOf(pullRequests: PullRequest[], parents: Map<string, PullRequest>): Map<string, PullRequest[]> {
+  const children = new Map<string, PullRequest[]>();
+  for (const pullRequest of pullRequests) {
+    const parent = parents.get(pullRequest.id);
+    if (!parent) continue;
+    children.set(parent.id, [...(children.get(parent.id) ?? []), pullRequest]);
+  }
+  return children;
 }
 
 /**

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { CheckState, PullRequest, ReviewDecision, SectionConfig } from "../../shared/types.js";
+import type { CheckState, PullRequest, ReviewDecision, ReviewState, SectionConfig } from "../../shared/types.js";
 import { absoluteTime, readableTextColor, relativeAge } from "../lib/format.js";
 import { useOverflowTitle } from "../lib/useOverflowTitle.js";
 import { SectionMarker } from "./SectionMarker.js";
@@ -23,7 +23,7 @@ interface PullRequestRowProps {
   onToggleSnooze: (pullRequest: PullRequest, snoozed: boolean) => void;
   /** The section this row would sit in, shown in place of the unread marker when set. */
   homeSection?: SectionConfig;
-  /** The pull request this one is stacked on, when it is shown in the same section. */
+  /** The pull request this one is stacked on, when that one is on the dashboard. */
   stackedOn?: PullRequest | null;
   /** Marks a pull request stacked on a branch whose pull request is not shown here. */
   detached?: boolean;
@@ -43,7 +43,7 @@ export function PullRequestRow({
   const { ref: titleRef, title: titleTooltip } = useOverflowTitle<HTMLSpanElement>(pr.title);
 
   return (
-    <div className="group relative flex items-center border-b border-ink-100 transition-colors last:border-b-0 hover:bg-sheen-500/5 dark:border-ink-800/70 dark:hover:bg-sheen-500/10">
+    <div className="group relative flex items-center border-b border-ink-100 transition-colors hover:bg-sheen-500/5 dark:border-ink-800/70 dark:hover:bg-sheen-500/10">
       <a
         href={pr.url}
         target="_blank"
@@ -70,7 +70,7 @@ export function PullRequestRow({
             src={pr.author.avatarUrl}
             alt={pr.author.login}
             title={pr.author.login}
-            className="h-6 w-6 shrink-0 rounded-full ring-1 ring-ink-200 dark:ring-ink-700"
+            className="h-5 w-5 shrink-0 rounded-full ring-1 ring-ink-200 dark:ring-ink-700"
           />
         )}
 
@@ -79,7 +79,7 @@ export function PullRequestRow({
             <span
               ref={titleRef}
               title={titleTooltip}
-              className={`truncate text-sm ${
+              className={`truncate text-xs leading-4 ${
                 pr.isRead ? "font-medium text-ink-700 dark:text-ink-200" : "font-semibold text-ink-900 dark:text-white"
               }`}
             >
@@ -93,7 +93,7 @@ export function PullRequestRow({
             )}
           </div>
 
-          <div className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-ink-500 dark:text-ink-400">
+          <div className="mt-0.5 flex items-center gap-1.5 truncate text-[10px] leading-3 text-ink-500 dark:text-ink-400">
             {(stackedOn || detached) && (
               <span
                 title={
@@ -135,8 +135,8 @@ export function PullRequestRow({
         </div>
 
         {pr.commentCount > 0 && (
-          <span className="hidden shrink-0 items-center gap-1 text-xs text-ink-400 sm:flex dark:text-ink-500">
-            <CommentIcon className="h-3.5 w-3.5" />
+          <span className="hidden shrink-0 items-center gap-1 text-[10px] text-ink-400 sm:flex dark:text-ink-500">
+            <CommentIcon className="h-3 w-3" />
             <span className="tabular-nums">{pr.commentCount}</span>
           </span>
         )}
@@ -150,7 +150,7 @@ export function PullRequestRow({
         <time
           dateTime={pr.updatedAt}
           title={`Updated ${absoluteTime(pr.updatedAt)}`}
-          className="w-9 shrink-0 text-right text-xs tabular-nums text-ink-400 dark:text-ink-500"
+          className="w-9 shrink-0 text-right text-[10px] tabular-nums text-ink-400 dark:text-ink-500"
         >
           {relativeAge(pr.updatedAt)}
         </time>
@@ -184,7 +184,7 @@ function Chip({ children, className }: { children: ReactNode; className: string 
 }
 
 function StateIcon({ pr }: { pr: PullRequest }) {
-  const className = "h-4 w-4 shrink-0";
+  const className = "h-3.5 w-3.5 shrink-0";
   if (pr.state === "MERGED") return <MergeIcon className={`${className} text-sheen-400`} />;
   if (pr.state === "CLOSED") return <XCircleIcon className={`${className} text-rose-500`} />;
   if (pr.isDraft) return <DraftIcon className={`${className} text-ink-400`} />;
@@ -203,7 +203,7 @@ const CHECK_PRESENTATION: Record<CheckState, { Icon: typeof CheckCircleIcon; cla
 function CheckStateIcon({ state }: { state: CheckState }) {
   const { Icon, className, label } = CHECK_PRESENTATION[state];
   return (
-    <Icon className={`h-4 w-4 shrink-0 ${className}`} role="img" aria-label={label}>
+    <Icon className={`h-3.5 w-3.5 shrink-0 ${className}`} role="img" aria-label={label}>
       <title>{label}</title>
     </Icon>
   );
@@ -230,32 +230,50 @@ function ReviewDecisionChip({ decision }: { decision: ReviewDecision }) {
   if (!presentation) return <span className="hidden w-[68px] shrink-0 md:block" />;
   return (
     <span className="hidden w-[68px] shrink-0 md:block">
-      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${presentation.className}`}>
+      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${presentation.className}`}>
         {presentation.label}
       </span>
     </span>
   );
 }
 
+const REVIEW_RING: Record<ReviewState, string> = {
+  APPROVED: "ring-emerald-400 dark:ring-emerald-500",
+  CHANGES_REQUESTED: "ring-rose-400 dark:ring-rose-500",
+  COMMENTED: "ring-ink-300 dark:ring-ink-500",
+  DISMISSED: "ring-ink-300 dark:ring-ink-600",
+  PENDING: "ring-glint-400 dark:ring-glint-500",
+};
+
+const REVIEW_VERDICT: Record<ReviewState, string> = {
+  APPROVED: "approved",
+  CHANGES_REQUESTED: "requested changes",
+  COMMENTED: "commented",
+  DISMISSED: "dismissed",
+  PENDING: "has a pending review",
+};
+
 function ReviewerStack({ pr }: { pr: PullRequest }) {
-  const approvers = pr.latestReviews.filter((review) => review.state === "APPROVED" && review.author);
-  const pending = pr.requestedReviewers.slice(0, 3);
-  if (approvers.length === 0 && pending.length === 0) return null;
+  const reviewed = pr.latestReviews.filter((review) => review.author);
+  const pending = pr.requestedReviewers;
+  if (reviewed.length === 0 && pending.length === 0) return null;
 
   return (
-    <div className="hidden shrink-0 items-center -space-x-1.5 xl:flex" title={reviewerTooltip(pr)}>
-      {approvers.slice(0, 3).map((review) => (
+    <div className="flex shrink-0 items-center -space-x-1.5" aria-label={reviewerTooltip(pr)}>
+      {reviewed.map((review) => (
         <img
-          key={review.author!.login}
+          key={`review-${review.author!.login}`}
           src={review.author!.avatarUrl}
           alt={review.author!.login}
-          className="h-5 w-5 rounded-full ring-2 ring-emerald-400 dark:ring-emerald-500"
+          title={`${review.author!.login} ${REVIEW_VERDICT[review.state]}`}
+          className={`h-5 w-5 rounded-full ring-2 ${REVIEW_RING[review.state]}`}
         />
       ))}
       {pending.map((login) => (
         <span
-          key={login}
-          className="flex h-5 w-5 items-center justify-center rounded-full bg-ink-200 text-[9px] font-semibold uppercase text-ink-600 ring-2 ring-ink-100 dark:bg-ink-700 dark:text-ink-300 dark:ring-ink-900"
+          key={`request-${login}`}
+          title={`${login} owes a review`}
+          className="flex h-5 w-5 items-center justify-center rounded-full bg-ink-200 text-[8px] font-semibold uppercase text-ink-600 ring-2 ring-ink-100 dark:bg-ink-700 dark:text-ink-300 dark:ring-ink-900"
         >
           {login.slice(0, 2)}
         </span>
@@ -265,11 +283,12 @@ function ReviewerStack({ pr }: { pr: PullRequest }) {
 }
 
 function reviewerTooltip(pr: PullRequest): string {
-  const approved = pr.latestReviews
-    .filter((review) => review.state === "APPROVED" && review.author)
-    .map((review) => review.author!.login);
-  const parts: string[] = [];
-  if (approved.length) parts.push(`Approved by ${approved.join(", ")}`);
-  if (pr.requestedReviewers.length) parts.push(`Awaiting ${pr.requestedReviewers.join(", ")}`);
+  const parts = (Object.keys(REVIEW_VERDICT) as ReviewState[]).flatMap((state) => {
+    const names = pr.latestReviews
+      .filter((review) => review.state === state && review.author)
+      .map((review) => review.author!.login);
+    return names.length ? [`${REVIEW_VERDICT[state]}: ${names.join(", ")}`] : [];
+  });
+  if (pr.requestedReviewers.length) parts.push(`awaiting: ${pr.requestedReviewers.join(", ")}`);
   return parts.join(" · ");
 }
