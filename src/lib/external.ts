@@ -1,8 +1,14 @@
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 /** Opens a link in the browser the user is signed in to GitHub with. */
 export async function openExternal(url: string): Promise<void> {
   await openUrl(url);
+}
+
+/** Puts a link on the system clipboard as plain text. */
+export async function copyLink(url: string): Promise<void> {
+  await writeText(url);
 }
 
 /**

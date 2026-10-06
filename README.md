@@ -202,6 +202,14 @@ Clicking a row opens it in your browser, where you are already signed in to
 GitHub. Every link in the app leaves for the browser this way; the window itself
 only ever shows the dashboard.
 
+Hovering a row also reveals a link button beside the snooze control. Pressing it
+copies the pull request's URL to the clipboard and shows a check for a moment.
+Beside it, on an open pull request you authored, a draft button converts the
+pull request to a draft; on a draft, the button shows the open pull request icon
+and marks it ready for review. The dashboard then refetches, so the pull request
+moves to the sections that now match it. A refusal from GitHub appears at the
+top of the dashboard.
+
 ## Burning down a section
 
 The flame on a section header opens every pull request in that section as its

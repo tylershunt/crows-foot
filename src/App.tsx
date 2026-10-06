@@ -168,6 +168,22 @@ export function App() {
     [refresh],
   );
 
+  const toggleDraft = useCallback(
+    async (pullRequest: PullRequest) => {
+      const draft = !pullRequest.isDraft;
+      setDashboard((current) => current && withDraft(current, pullRequest.id, draft));
+      try {
+        const isDraft = await api.setDraft(pullRequest.id, draft);
+        setDashboard((current) => current && withDraft(current, pullRequest.id, isDraft));
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : String(caught));
+      }
+      // Sections that ask for `is:draft` or `-is:draft` take or give up the pull request.
+      await refresh();
+    },
+    [refresh],
+  );
+
   const resetConfig = useCallback(async () => {
     const { config: saved, path } = await api.resetConfig();
     setConfig(saved);
@@ -290,6 +306,8 @@ export function App() {
                   }}
                   onBurnDown={burnDown}
                   onToggleSnooze={toggleSnooze}
+                  onToggleDraft={toggleDraft}
+                  viewerLogin={dashboard?.viewer.login ?? null}
                   stackColor={stackColor}
                   otherPullRequests={otherPullRequests}
                 />
@@ -349,6 +367,17 @@ function intoSnoozedSection(dashboard: DashboardResponse, pullRequest: PullReque
           }
         : section,
     ),
+  };
+}
+
+/** Marks every copy of one pull request on the dashboard as a draft or ready. */
+function withDraft(dashboard: DashboardResponse, pullRequestId: string, isDraft: boolean): DashboardResponse {
+  return {
+    ...dashboard,
+    sections: dashboard.sections.map((section) => ({
+      ...section,
+      pullRequests: section.pullRequests.map((pr) => (pr.id === pullRequestId ? { ...pr, isDraft } : pr)),
+    })),
   };
 }
 

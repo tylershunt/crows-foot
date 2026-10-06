@@ -1,14 +1,17 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import type { CheckState, PullRequest, ReviewDecision, ReviewState, SectionConfig } from "../../shared/types.js";
+import { copyLink } from "../lib/external.js";
 import { absoluteTime, readableTextColor, relativeAge } from "../lib/format.js";
 import { useOverflowTitle } from "../lib/useOverflowTitle.js";
 import { SectionMarker } from "./SectionMarker.js";
 import {
   CheckCircleIcon,
+  CheckIcon,
   ClockIcon,
   CommentIcon,
   DashCircleIcon,
   DraftIcon,
+  LinkIcon,
   LockIcon,
   MergeIcon,
   PullRequestIcon,
@@ -21,6 +24,11 @@ interface PullRequestRowProps {
   /** Whether this row is listed as snoozed, where its control wakes instead. */
   snoozed: boolean;
   onToggleSnooze: (pullRequest: PullRequest, snoozed: boolean) => void;
+  /**
+   * Converts an open pull request to a draft, or marks a draft ready for review.
+   * The row offers no draft button without it.
+   */
+  onToggleDraft?: (pullRequest: PullRequest) => Promise<void>;
   /** The section this row would sit in, shown in place of the unread marker when set. */
   homeSection?: SectionConfig;
   /** The pull request this one is stacked on, when that one is on the dashboard. */
@@ -35,6 +43,7 @@ export function PullRequestRow({
   pr,
   snoozed,
   onToggleSnooze,
+  onToggleDraft,
   homeSection,
   stackedOn = null,
   detached = false,
@@ -156,6 +165,10 @@ export function PullRequestRow({
         </time>
       </a>
 
+      <CopyLinkButton pr={pr} />
+
+      {pr.state === "OPEN" && onToggleDraft && <DraftToggleButton pr={pr} onToggleDraft={onToggleDraft} />}
+
       <button
         type="button"
         onClick={() => onToggleSnooze(pr, snoozed)}
@@ -168,6 +181,68 @@ export function PullRequestRow({
         {snoozed ? <>&#9200;</> : <>&#128564;</>}
       </button>
     </div>
+  );
+}
+
+function DraftToggleButton({
+  pr,
+  onToggleDraft,
+}: {
+  pr: PullRequest;
+  onToggleDraft: (pullRequest: PullRequest) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const label = pr.isDraft ? "Mark ready for review" : "Convert to draft";
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => {
+        setBusy(true);
+        void onToggleDraft(pr).finally(() => setBusy(false));
+      }}
+      title={label}
+      aria-label={`${label}: ${pr.title}`}
+      className={`my-1.5 ml-1.5 shrink-0 cursor-pointer rounded-md p-1.5 text-ink-400 transition hover:bg-sheen-500/15 hover:text-ink-800 focus:opacity-100 group-hover:opacity-100 disabled:cursor-wait dark:hover:text-ink-100 ${
+        busy ? "animate-pulse opacity-100" : "opacity-0"
+      }`}
+    >
+      {pr.isDraft ? <PullRequestIcon className="h-3.5 w-3.5" /> : <DraftIcon className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
+const COPY_CONFIRMATION_MS = 1500;
+
+function CopyLinkButton({ pr }: { pr: PullRequest }) {
+  const [outcome, setOutcome] = useState<"copied" | "failed" | null>(null);
+
+  useEffect(() => {
+    if (!outcome) return;
+    const timeout = setTimeout(() => setOutcome(null), COPY_CONFIRMATION_MS);
+    return () => clearTimeout(timeout);
+  }, [outcome]);
+
+  const label = outcome === "copied" ? "Copied" : outcome === "failed" ? "Could not copy the link" : "Copy link";
+
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        copyLink(pr.url).then(
+          () => setOutcome("copied"),
+          () => setOutcome("failed"),
+        )
+      }
+      title={label}
+      aria-label={`Copy link to ${pr.title}`}
+      className={`my-1.5 ml-1.5 shrink-0 cursor-pointer rounded-md p-1.5 transition hover:bg-sheen-500/15 hover:text-ink-800 focus:opacity-100 group-hover:opacity-100 dark:hover:text-ink-100 ${
+        outcome === "failed" ? "text-rose-500" : outcome === "copied" ? "text-emerald-500" : "text-ink-400"
+      } ${outcome ? "opacity-100" : "opacity-0"}`}
+    >
+      {outcome === "copied" ? <CheckIcon className="h-3.5 w-3.5" /> : <LinkIcon className="h-3.5 w-3.5" />}
+    </button>
   );
 }
 

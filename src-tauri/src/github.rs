@@ -245,6 +245,29 @@ fn into_pull_request(node: &Value) -> Option<PullRequest> {
     })
 }
 
+const CONVERT_TO_DRAFT_DOCUMENT: &str = "mutation ($id: ID!) {
+  convertPullRequestToDraft(input: { pullRequestId: $id }) { pullRequest { isDraft } }
+}";
+
+const MARK_READY_DOCUMENT: &str = "mutation ($id: ID!) {
+  markPullRequestReadyForReview(input: { pullRequestId: $id }) { pullRequest { isDraft } }
+}";
+
+/// Converts the pull request to a draft when `draft` is set, and marks it ready
+/// for review otherwise. Returns whether GitHub now holds it as a draft.
+pub async fn set_draft(client: &reqwest::Client, token: &str, pull_request_id: &str, draft: bool) -> Result<bool> {
+    let (document, field) = if draft {
+        (CONVERT_TO_DRAFT_DOCUMENT, "convertPullRequestToDraft")
+    } else {
+        (MARK_READY_DOCUMENT, "markPullRequestReadyForReview")
+    };
+
+    let data = graphql::<Value>(client, token, document, json!({ "id": pull_request_id })).await?;
+    data[field]["pullRequest"]["isDraft"]
+        .as_bool()
+        .ok_or_else(|| AppError::new("GitHub did not say whether the pull request is a draft."))
+}
+
 async fn graphql<T: for<'de> Deserialize<'de>>(
     client: &reqwest::Client,
     token: &str,

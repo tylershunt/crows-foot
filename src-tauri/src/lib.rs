@@ -47,21 +47,35 @@ fn explain_query(query: String, global_filters: Vec<types::GlobalFilter>) -> Res
 
 #[tauri::command]
 async fn get_dashboard(crow: tauri::State<'_, Crow>) -> Result<DashboardResponse> {
-    let config = crow.config.read()?;
-
-    let dashboard = match fetch(&crow, &config).await {
-        Err(error) if error.stale_credential => {
-            crow.tokens.forget().await;
-            fetch(&crow, &config).await
-        }
-        outcome => outcome,
-    }?;
-
+    let config = &crow.config.read()?;
+    let http = &crow.http;
+    let dashboard =
+        with_github(&crow, |token| async move { github::fetch_dashboard(http, &token, config).await }).await?;
     with_snoozed_section(dashboard, &crow.snoozes)
 }
 
-async fn fetch(crow: &Crow, config: &types::AppConfig) -> Result<DashboardResponse> {
-    github::fetch_dashboard(&crow.http, &crow.tokens.resolve().await?, config).await
+/// Converts the pull request to a draft, or marks it ready for review, and
+/// returns whether it is now a draft.
+#[tauri::command]
+async fn set_draft(crow: tauri::State<'_, Crow>, pull_request_id: String, draft: bool) -> Result<bool> {
+    let (http, id) = (&crow.http, pull_request_id.as_str());
+    with_github(&crow, |token| async move { github::set_draft(http, &token, id, draft).await }).await
+}
+
+/// Runs `call` with the user's token, and once more with a fresh one when
+/// GitHub refuses the first.
+async fn with_github<T, F, Fut>(crow: &Crow, call: F) -> Result<T>
+where
+    F: Fn(String) -> Fut,
+    Fut: std::future::Future<Output = Result<T>>,
+{
+    match call(crow.tokens.resolve().await?).await {
+        Err(error) if error.stale_credential => {
+            crow.tokens.forget().await;
+            call(crow.tokens.resolve().await?).await
+        }
+        outcome => outcome,
+    }
 }
 
 #[tauri::command]
@@ -78,6 +92,7 @@ fn wake(crow: tauri::State<'_, Crow>, pull_request_id: String) -> Result<()> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
@@ -97,6 +112,7 @@ pub fn run() {
             reset_config,
             explain_query,
             get_dashboard,
+            set_draft,
             snooze,
             wake
         ])

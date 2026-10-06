@@ -24,6 +24,8 @@ export const api = {
   resetConfig: () => call<ConfigResponse>("reset_config"),
   explainQuery: (query: string, globalFilters: GlobalFilter[]) =>
     call<QueryPlan>("explain_query", { query, globalFilters }),
+  /** Resolves to whether GitHub now holds the pull request as a draft. */
+  setDraft: (pullRequestId: string, draft: boolean) => call<boolean>("set_draft", { pullRequestId, draft }),
   snooze: (pullRequestId: string) => call<void>("snooze", { pullRequestId }),
   wake: (pullRequestId: string) => call<void>("wake", { pullRequestId }),
 };
