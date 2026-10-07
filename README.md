@@ -256,6 +256,15 @@ would not have shown it anyway.
 Snoozes live in `snoozes.db`, a SQLite file beside your config, keyed by the
 pull request's GitHub node id. Deleting the file un-snoozes everything.
 
+## Overgrowth
+
+A pull request nobody has updated for a week starts to grow moss along the
+bottom of its row. More moss grows, reaching farther across, at two, four, and
+eight weeks. Cobwebs appear in the right-hand corner at two weeks and in the
+left-hand one at four, and from eight weeks a spider hangs beside them. Each
+pull request's moss grows in its own pattern, the same on every refresh. Any
+update to the pull request clears it.
+
 ## Stacks
 
 Pull requests stacked on one another are moved next to each other and joined by

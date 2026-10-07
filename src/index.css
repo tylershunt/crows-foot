@@ -69,6 +69,23 @@ body {
     var(--color-glint-400) 100%
   );
 }
+@media (prefers-reduced-motion: no-preference) {
+  .spider-sway {
+    transform-origin: top center;
+    animation: spider-sway 4s ease-in-out infinite;
+  }
+}
+
+@keyframes spider-sway {
+  0%,
+  100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(6deg);
+  }
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

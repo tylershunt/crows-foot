@@ -2,6 +2,8 @@ import { type ReactNode, useEffect, useState } from "react";
 import type { CheckState, PullRequest, ReviewDecision, ReviewState, SectionConfig } from "../../shared/types.js";
 import { copyLink } from "../lib/external.js";
 import { absoluteTime, readableTextColor, relativeAge } from "../lib/format.js";
+import { overgrowth } from "../lib/overgrowth.js";
+import { Overgrowth } from "./Overgrowth.js";
 import { useOverflowTitle } from "../lib/useOverflowTitle.js";
 import { SectionMarker } from "./SectionMarker.js";
 import {
@@ -180,6 +182,8 @@ export function PullRequestRow({
       >
         {snoozed ? <>&#9200;</> : <>&#128564;</>}
       </button>
+
+      <Overgrowth seed={pr.id} stage={overgrowth(pr.updatedAt)} />
     </div>
   );
 }
