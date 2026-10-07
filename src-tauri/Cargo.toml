@@ -16,7 +16,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.6.3", features = [] }
 
 [dependencies]
-tauri = { version = "2.11.3", features = [] }
+tauri = { version = "2.12.1", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-process = "2"
 serde = { version = "1.0", features = ["derive"] }
@@ -26,7 +26,7 @@ tokio = { version = "1", features = ["process", "rt", "sync"] }
 futures = "0.3"
 rusqlite = { version = "0.32", features = ["bundled"] }
 chrono = "0.4"
-tauri-plugin-clipboard-manager = "2"
+tauri-plugin-clipboard-manager = "2.4"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
