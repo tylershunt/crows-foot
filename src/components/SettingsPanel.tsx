@@ -65,6 +65,8 @@ interface SettingsPanelProps {
   focusSectionId: string | null;
   theme: "light" | "dark";
   onTheme: (theme: "light" | "dark") => void;
+  overgrowthShown: boolean;
+  onOvergrowthShown: (shown: boolean) => void;
   onSave: (config: AppConfig) => Promise<void>;
   onReset: () => Promise<void>;
   onClose: () => void;
@@ -78,6 +80,8 @@ export function SettingsPanel({
   focusSectionId,
   theme,
   onTheme,
+  overgrowthShown,
+  onOvergrowthShown,
   onSave,
   onReset,
   onClose,
@@ -318,6 +322,21 @@ export function SettingsPanel({
               className="ml-auto"
               checked={theme === "light"}
               onChange={(event) => onTheme(event.target.checked ? "light" : "dark")}
+            />
+          </label>
+
+          <label className="flex items-center gap-3 rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm dark:border-ink-800 dark:bg-ink-900">
+            <span>
+              <span className="block font-medium text-ink-700 dark:text-ink-200">Overgrow untouched pull requests</span>
+              <span className="block text-xs text-ink-400 dark:text-ink-500">
+                Moss and cobwebs on rows not updated for a week or more.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              className="ml-auto"
+              checked={overgrowthShown}
+              onChange={(event) => onOvergrowthShown(event.target.checked)}
             />
           </label>
 

@@ -263,7 +263,8 @@ bottom of its row. More moss grows, reaching farther across, at two, four, and
 eight weeks. Cobwebs appear in the right-hand corner at two weeks and in the
 left-hand one at four, and from eight weeks a spider hangs beside them. Each
 pull request's moss grows in its own pattern, the same on every refresh. Any
-update to the pull request clears it.
+update to the pull request clears it. Turn off **Overgrow untouched pull
+requests** in Settings to keep every row clean.
 
 ## Stacks
 

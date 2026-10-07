@@ -17,6 +17,8 @@ interface SectionProps {
   onToggleDraft: (pullRequest: PullRequest) => Promise<void>;
   /** The signed-in GitHub user, or null before the first fetch names them. */
   viewerLogin: string | null;
+  /** Whether rows grow moss and cobwebs as they go untouched. */
+  overgrowthShown: boolean;
   /** The color marking the stack a pull request belongs to, across all sections. */
   stackColor: (pullRequest: PullRequest) => string;
   /** Pull requests on the dashboard that this section is not showing. */
@@ -34,6 +36,7 @@ export function Section({
   onToggleSnooze,
   onToggleDraft,
   viewerLogin,
+  overgrowthShown,
   stackColor,
   otherPullRequests,
   loading,
@@ -126,6 +129,7 @@ export function Section({
                           ? onToggleDraft
                           : undefined
                       }
+                      overgrowthShown={overgrowthShown}
                       homeSection={section.homeSections?.[entry.pullRequest.id]}
                       stackedOn={entry.parent}
                       detached={entry.detached}

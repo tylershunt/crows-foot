@@ -17,6 +17,8 @@ import { checkForUpdate, type Update } from "./lib/update.js";
 
 type Theme = "light" | "dark";
 
+const OVERGROWTH_STORAGE_KEY = "crows-foot-overgrowth";
+
 export function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [configPath, setConfigPath] = useState("");
@@ -27,6 +29,9 @@ export function App() {
   const [filterText, setFilterText] = useState("");
   const [settingsFocus, setSettingsFocus] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [overgrowthShown, setOvergrowthShown] = useState(
+    () => localStorage.getItem(OVERGROWTH_STORAGE_KEY) !== "off",
+  );
   const [theme, setTheme] = useState<Theme>(() =>
     document.documentElement.classList.contains("dark") ? "dark" : "light",
   );
@@ -99,6 +104,10 @@ export function App() {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("crows-foot-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem(OVERGROWTH_STORAGE_KEY, overgrowthShown ? "on" : "off");
+  }, [overgrowthShown]);
 
   // The badge counts what GitHub returned, so a filter typed into the box narrows
   // the view without pretending the rest of the pile went away.
@@ -308,6 +317,7 @@ export function App() {
                   onToggleSnooze={toggleSnooze}
                   onToggleDraft={toggleDraft}
                   viewerLogin={dashboard?.viewer.login ?? null}
+                  overgrowthShown={overgrowthShown}
                   stackColor={stackColor}
                   otherPullRequests={otherPullRequests}
                 />
@@ -330,6 +340,8 @@ export function App() {
           focusSectionId={settingsFocus}
           theme={theme}
           onTheme={setTheme}
+          overgrowthShown={overgrowthShown}
+          onOvergrowthShown={setOvergrowthShown}
           onSave={applyConfig}
           onReset={resetConfig}
           update={update}

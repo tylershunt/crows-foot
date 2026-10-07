@@ -31,6 +31,8 @@ interface PullRequestRowProps {
    * The row offers no draft button without it.
    */
   onToggleDraft?: (pullRequest: PullRequest) => Promise<void>;
+  /** Whether the row grows moss and cobwebs as it goes untouched. */
+  overgrowthShown: boolean;
   /** The section this row would sit in, shown in place of the unread marker when set. */
   homeSection?: SectionConfig;
   /** The pull request this one is stacked on, when that one is on the dashboard. */
@@ -46,6 +48,7 @@ export function PullRequestRow({
   snoozed,
   onToggleSnooze,
   onToggleDraft,
+  overgrowthShown,
   homeSection,
   stackedOn = null,
   detached = false,
@@ -183,7 +186,7 @@ export function PullRequestRow({
         {snoozed ? <>&#9200;</> : <>&#128564;</>}
       </button>
 
-      <Overgrowth seed={pr.id} stage={overgrowth(pr.updatedAt)} />
+      {overgrowthShown && <Overgrowth seed={pr.id} stage={overgrowth(pr.updatedAt)} />}
     </div>
   );
 }
