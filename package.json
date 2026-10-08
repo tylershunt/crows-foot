@@ -1,6 +1,6 @@
 {
   "name": "crows-foot",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
   "description": "A local dashboard that groups the GitHub pull requests needing your attention into configurable sections.",
