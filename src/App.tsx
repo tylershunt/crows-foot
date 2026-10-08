@@ -7,7 +7,6 @@ import type {
   SectionResult,
 } from "../shared/types.js";
 import { Section } from "./components/Section.js";
-import { Logo } from "./components/Logo.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
 import { UpdateBanner } from "./components/UpdateBanner.js";
 import { AlertIcon, FilterIcon, RefreshIcon, SearchIcon, SettingsIcon } from "./components/icons.js";
@@ -20,6 +19,7 @@ import { openExternal } from "./lib/external.js";
 import { stackColors } from "./lib/stackColor.js";
 import { BESIDE_WINDOW_CONTROLS, titleBar } from "./lib/titlebar.js";
 import { checkForUpdate, type Update } from "./lib/update.js";
+import { useScrollbarWhileScrolling } from "./lib/useScrollbarWhileScrolling.js";
 
 type Theme = "light" | "dark";
 
@@ -28,6 +28,7 @@ const OVERGROWTH_STORAGE_KEY = "crows-foot-overgrowth";
 export function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [configPath, setConfigPath] = useState("");
+  const sectionsScroller = useScrollbarWhileScrolling<HTMLDivElement>();
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -235,8 +236,8 @@ export function App() {
           )}
         >
           <div className="flex shrink-0 items-center gap-2.5">
-            <Logo className="h-7 w-7" />
-            <p className="wordmark-sheen bg-clip-text font-script text-2xl leading-tight text-transparent">
+            {/* Great Vibes inks about 3px above the middle of its line box. */}
+            <p className="wordmark-sheen mx-3 translate-y-[3px] bg-clip-text font-script text-2xl leading-tight text-transparent">
               Crow&rsquo;s Foot
             </p>
             {dashboard?.viewer && (
@@ -256,7 +257,7 @@ export function App() {
             )}
           </div>
 
-          <div className="relative min-w-0 max-w-md flex-1">
+          <div className="relative min-w-0 flex-1">
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
             <input
               ref={searchRef}
@@ -300,7 +301,10 @@ export function App() {
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div
+          ref={sectionsScroller}
+          className="scrollbar-while-scrolling flex-1 overflow-y-auto overscroll-y-contain px-6 py-5"
+        >
           {update && <UpdateBanner update={update} onDismiss={() => setUpdate(null)} />}
 
           {error && (
@@ -310,7 +314,7 @@ export function App() {
             </div>
           )}
 
-          <div className="mx-auto max-w-5xl space-y-4">
+          <div className="space-y-4">
             {sections.map((section) => {
               const collapsed = collapsedOverrides[section.config.id] ?? startsCollapsed(section);
               const shown = new Set(section.pullRequests.map((pullRequest) => pullRequest.id));

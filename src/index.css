@@ -39,6 +39,26 @@ html,
 body,
 #root {
   height: 100%;
+  overscroll-behavior: none;
+}
+
+.scrollbar-while-scrolling::-webkit-scrollbar {
+  width: 10px;
+}
+
+.scrollbar-while-scrolling::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-while-scrolling::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background: transparent;
+  background-clip: padding-box;
+}
+
+.scrollbar-while-scrolling.scrolling::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--color-ink-400) 70%, transparent);
 }
 
 body {
