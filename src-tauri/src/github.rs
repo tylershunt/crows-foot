@@ -268,7 +268,7 @@ pub async fn set_draft(client: &reqwest::Client, token: &str, pull_request_id: &
         .ok_or_else(|| AppError::new("GitHub did not say whether the pull request is a draft."))
 }
 
-async fn graphql<T: for<'de> Deserialize<'de>>(
+pub(crate) async fn graphql<T: for<'de> Deserialize<'de>>(
     client: &reqwest::Client,
     token: &str,
     document: &str,

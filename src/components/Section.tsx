@@ -1,20 +1,21 @@
-import type { PullRequest, SectionResult } from "../../shared/types.js";
+import type { PullRequest, ReviewerCandidate, SectionResult } from "../../shared/types.js";
 import { SNOOZED_SECTION } from "../../shared/snoozed.js";
-import { AlertIcon, ChevronDownIcon, FeatherIcon, FlameIcon, SettingsIcon, StackIcon } from "./icons.js";
+import { AlertIcon, ChevronDownIcon, FeatherIcon, FlameIcon, StackIcon } from "./icons.js";
 import { groupIntoStacks, type StackGroup } from "../lib/stacks.js";
-import { PullRequestRow } from "./PullRequestRow.js";
+import { PullRequestRow, ROW_EDGE_INSET } from "./PullRequestRow.js";
 import { SectionMarker } from "./SectionMarker.js";
 
 interface SectionProps {
   section: SectionResult;
   collapsed: boolean;
   onToggle: () => void;
-  onEdit: () => void;
   /** Receives the section's pull requests in the order shown here. */
   onBurnDown: (pullRequests: PullRequest[]) => void;
   onToggleSnooze: (pullRequest: PullRequest, snoozed: boolean) => void;
   /** Offered on the pull requests `viewerLogin` authored. */
   onToggleDraft: (pullRequest: PullRequest) => Promise<void>;
+  /** Offered on the pull requests `viewerLogin` authored. Rejects with a message the reviewer picker shows. */
+  onRequestReviewers: (pullRequest: PullRequest, reviewers: ReviewerCandidate[]) => Promise<void>;
   /** The signed-in GitHub user, or null before the first fetch names them. */
   viewerLogin: string | null;
   /** Whether rows grow moss and cobwebs as they go untouched. */
@@ -31,10 +32,10 @@ export function Section({
   section,
   collapsed,
   onToggle,
-  onEdit,
   onBurnDown,
   onToggleSnooze,
   onToggleDraft,
+  onRequestReviewers,
   viewerLogin,
   overgrowthShown,
   stackColor,
@@ -50,7 +51,9 @@ export function Section({
   return (
     <section id={`section-${config.id}`} className="scroll-mt-24">
       <div className="overflow-hidden rounded-xl border border-ink-200 bg-white shadow-sm dark:border-ink-800 dark:bg-ink-900">
-        <header className="group flex items-center gap-2.5 border-b border-ink-200 px-4 py-2.5 dark:border-ink-800">
+        <header
+          className={`flex items-center gap-2.5 border-b border-ink-200 py-2.5 pl-4 dark:border-ink-800 ${ROW_EDGE_INSET}`}
+        >
           <button
             type="button"
             onClick={onToggle}
@@ -75,25 +78,14 @@ export function Section({
             </span>
           </button>
 
-          {!snoozed && (
-            <button
-              type="button"
-              onClick={onEdit}
-              title="Edit this section's filter"
-              className="rounded-md p-1.5 text-ink-400 opacity-0 transition hover:bg-ink-100 hover:text-ink-700 focus:opacity-100 group-hover:opacity-100 dark:hover:bg-ink-800 dark:hover:text-ink-200"
-            >
-              <SettingsIcon className="h-4 w-4" />
-            </button>
-          )}
-
           <button
             type="button"
             onClick={() => onBurnDown(ordered)}
             disabled={ordered.length === 0}
             title={`Burn down: open all ${ordered.length} in new tabs`}
-            className="rounded-md p-1.5 text-ink-400 transition hover:bg-orange-500/10 hover:text-orange-500 disabled:pointer-events-none disabled:opacity-30"
+            className="shrink-0 rounded-md p-1.5 text-ink-400 transition hover:bg-orange-500/10 hover:text-orange-500 disabled:pointer-events-none disabled:opacity-30"
           >
-            <FlameIcon className="h-4 w-4" />
+            <FlameIcon className="h-3.5 w-3.5" />
           </button>
         </header>
 
@@ -118,24 +110,24 @@ export function Section({
               <>
                 {groups.map((group) => {
                   const color = stackColor(group.rows[0]!.pullRequest);
-                  const row = (entry: (typeof group.rows)[number]) => (
-                    <PullRequestRow
-                      key={entry.pullRequest.id}
-                      pr={entry.pullRequest}
-                      snoozed={snoozed}
-                      onToggleSnooze={onToggleSnooze}
-                      onToggleDraft={
-                        viewerLogin !== null && entry.pullRequest.author?.login === viewerLogin
-                          ? onToggleDraft
-                          : undefined
-                      }
-                      overgrowthShown={overgrowthShown}
-                      homeSection={section.homeSections?.[entry.pullRequest.id]}
-                      stackedOn={entry.parent}
-                      detached={entry.detached}
-                      stackColor={color}
-                    />
-                  );
+                  const row = (entry: (typeof group.rows)[number]) => {
+                    const authored = viewerLogin !== null && entry.pullRequest.author?.login === viewerLogin;
+                    return (
+                      <PullRequestRow
+                        key={entry.pullRequest.id}
+                        pr={entry.pullRequest}
+                        snoozed={snoozed}
+                        onToggleSnooze={onToggleSnooze}
+                        onToggleDraft={authored ? onToggleDraft : undefined}
+                        onRequestReviewers={authored ? onRequestReviewers : undefined}
+                        overgrowthShown={overgrowthShown}
+                        homeSection={section.homeSections?.[entry.pullRequest.id]}
+                        stackedOn={entry.parent}
+                        detached={entry.detached}
+                        stackColor={color}
+                      />
+                    );
+                  };
 
                   return drawsBracket(group) ? (
                     <div key={group.id} className="relative">

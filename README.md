@@ -69,8 +69,7 @@ macOS.
 
 ## Configuring sections
 
-Click the gear at the right of the top bar, or the gear on any section header to jump
-straight to that section. You can rename sections, edit their query, reorder
+Click the gear at the right of the top bar. You can rename sections, edit their query, reorder
 them, set a per-section result limit and accent color, and choose whether a
 section starts collapsed and whether it counts on the dock badge. A section
 whose query currently matches nothing starts collapsed on its own, so empty
@@ -202,13 +201,26 @@ Clicking a row opens it in your browser, where you are already signed in to
 GitHub. Every link in the app leaves for the browser this way; the window itself
 only ever shows the dashboard.
 
-Hovering a row also reveals a link button beside the snooze control. Pressing it
-copies the pull request's URL to the clipboard and shows a check for a moment.
-Beside it, on an open pull request you authored, a draft button converts the
-pull request to a draft; on a draft, the button shows the open pull request icon
-and marks it ready for review. The dashboard then refetches, so the pull request
-moves to the sections that now match it. A refusal from GitHub appears at the
-top of the dashboard.
+Each row ends in two controls. The link button copies the pull request's URL to
+the clipboard and shows a check for a moment. The menu button holds the rest of
+its actions, among them **Snooze until updated**.
+
+On an open pull request you authored, the menu offers **Convert to draft**, or
+**Mark ready for review** on a draft. The dashboard then refetches, so the pull
+request moves to the sections that now match it. A refusal from GitHub appears
+at the top of the dashboard.
+
+On an open pull request you authored, **Request reviewers…** in the menu opens a
+reviewer picker. It lists
+GitHub's suggested reviewers until you type, then the repository's
+collaborators matching what you typed. Tick one or more and press **Request
+review**; reviewers already requested are shown ticked. Requests add to the ones
+already open, and GitHub's refusal, when it refuses, appears in the picker.
+
+On a pull request stacked on another open one, the picker lists the parent's
+reviewers first and offers **Copy reviewers from #1234**, which ticks everyone
+requested on the parent or who has reviewed it. Team requests are not copied.
+The parent is found by branch, so it need not be on the dashboard.
 
 ## Burning down a section
 
@@ -232,8 +244,8 @@ they do not count until they wake. A badged section whose count is partial (see
 
 ## Snoozing
 
-Hovering a row reveals a sleeping face at its right edge. Pressing it snoozes
-that pull request: it leaves every section, and the burn down, at once. Section
+**Snooze until updated** in a row's menu snoozes that pull request: it leaves
+every section, and the burn down, at once. Section
 counts drop with it, so `N more match this filter` keeps meaning what it says.
 
 A snooze lasts until the pull request is next touched. Any activity with a
@@ -241,13 +253,13 @@ timestamp after the moment you snoozed brings it back on the following refresh,
 so a snooze cannot outlive the thing it was hiding from you.
 
 Whatever is currently hidden collects in a **Snoozed** section that the app
-maintains at the bottom of the list, marked with the same sleeping face rather
-than a crow's foot. It is not in your config, so it has no filter to edit, and
+maintains at the bottom of the list, marked with a sleeping face rather than a
+crow's foot. It is not in your config, so it has no filter to edit, and
 it starts collapsed. Each row there leads with the crow's foot of the section
 that would be showing it, in that section's color, so you can see what you are
-holding off without opening anything; hovering names the section. Rows offer an
-alarm clock in place of the sleeping face: pressing it wakes that pull request
-immediately and returns it to the sections it belongs to.
+holding off without opening anything; hovering names the section. Their menus
+offer **Wake now**, which returns the pull request to the sections it belongs to
+immediately.
 
 A pull request only appears here while some section's query still returns
 it — one that has fallen out of every query is not shown, since the dashboard

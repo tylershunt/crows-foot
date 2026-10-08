@@ -2,6 +2,7 @@ mod config;
 mod error;
 mod github;
 mod query;
+mod reviewers;
 mod snooze;
 mod token;
 mod types;
@@ -62,6 +63,34 @@ async fn set_draft(crow: tauri::State<'_, Crow>, pull_request_id: String, draft:
     with_github(&crow, |token| async move { github::set_draft(http, &token, id, draft).await }).await
 }
 
+/// People who could review the pull request, narrowed to `query` when it is not empty.
+#[tauri::command]
+async fn reviewer_candidates(
+    crow: tauri::State<'_, Crow>,
+    pull_request_id: String,
+    query: String,
+) -> Result<Vec<types::ReviewerCandidate>> {
+    let (http, id, query) = (&crow.http, pull_request_id.as_str(), query.as_str());
+    with_github(&crow, |token| async move { reviewers::candidates(http, &token, id, query).await }).await
+}
+
+/// The reviewers of the open pull request this one is stacked on, if there is one.
+#[tauri::command]
+async fn parent_reviewers(
+    crow: tauri::State<'_, Crow>,
+    pull_request_id: String,
+) -> Result<Option<reviewers::ParentReviewers>> {
+    let (http, id) = (&crow.http, pull_request_id.as_str());
+    with_github(&crow, |token| async move { reviewers::of_parent(http, &token, id).await }).await
+}
+
+/// Asks each of `user_ids` to review the pull request.
+#[tauri::command]
+async fn request_reviewers(crow: tauri::State<'_, Crow>, pull_request_id: String, user_ids: Vec<String>) -> Result<()> {
+    let (http, id, user_ids) = (&crow.http, pull_request_id.as_str(), user_ids.as_slice());
+    with_github(&crow, |token| async move { reviewers::request(http, &token, id, user_ids).await }).await
+}
+
 /// Runs `call` with the user's token, and once more with a fresh one when
 /// GitHub refuses the first.
 async fn with_github<T, F, Fut>(crow: &Crow, call: F) -> Result<T>
@@ -113,6 +142,9 @@ pub fn run() {
             explain_query,
             get_dashboard,
             set_draft,
+            reviewer_candidates,
+            parent_reviewers,
+            request_reviewers,
             snooze,
             wake
         ])

@@ -1,9 +1,18 @@
-import { type ReactNode, useEffect, useState } from "react";
-import type { CheckState, PullRequest, ReviewDecision, ReviewState, SectionConfig } from "../../shared/types.js";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
+import type {
+  CheckState,
+  PullRequest,
+  ReviewDecision,
+  ReviewerCandidate,
+  ReviewState,
+  SectionConfig,
+} from "../../shared/types.js";
 import { copyLink } from "../lib/external.js";
 import { absoluteTime, readableTextColor, relativeAge } from "../lib/format.js";
 import { overgrowth } from "../lib/overgrowth.js";
 import { Overgrowth } from "./Overgrowth.js";
+import { Popover } from "./Popover.js";
+import { ReviewerPicker } from "./ReviewerPicker.js";
 import { useOverflowTitle } from "../lib/useOverflowTitle.js";
 import { SectionMarker } from "./SectionMarker.js";
 import {
@@ -15,11 +24,16 @@ import {
   DraftIcon,
   LinkIcon,
   LockIcon,
+  MenuIcon,
+  UserPlusIcon,
   MergeIcon,
   PullRequestIcon,
   StackIcon,
   XCircleIcon,
 } from "./icons.js";
+
+/** The gap between a row's last control and its right edge, which a section header's last control keeps too. */
+export const ROW_EDGE_INSET = "pr-1.5";
 
 interface PullRequestRowProps {
   pr: PullRequest;
@@ -31,6 +45,8 @@ interface PullRequestRowProps {
    * The row offers no draft button without it.
    */
   onToggleDraft?: (pullRequest: PullRequest) => Promise<void>;
+  /** Rejects with a message the reviewer picker shows. */
+  onRequestReviewers?: (pullRequest: PullRequest, reviewers: ReviewerCandidate[]) => Promise<void>;
   /** Whether the row grows moss and cobwebs as it goes untouched. */
   overgrowthShown: boolean;
   /** The section this row would sit in, shown in place of the unread marker when set. */
@@ -48,6 +64,7 @@ export function PullRequestRow({
   snoozed,
   onToggleSnooze,
   onToggleDraft,
+  onRequestReviewers,
   overgrowthShown,
   homeSection,
   stackedOn = null,
@@ -55,9 +72,10 @@ export function PullRequestRow({
   stackColor,
 }: PullRequestRowProps) {
   const { ref: titleRef, title: titleTooltip } = useOverflowTitle<HTMLSpanElement>(pr.title);
+  const [row, setRow] = useState<HTMLDivElement | null>(null);
 
   return (
-    <div className="group relative flex items-center border-b border-ink-100 transition-colors hover:bg-sheen-500/5 dark:border-ink-800/70 dark:hover:bg-sheen-500/10">
+    <div ref={setRow} className={`group relative flex items-center ${ROW_EDGE_INSET} border-b border-ink-100 transition-colors hover:bg-sheen-500/5 dark:border-ink-800/70 dark:hover:bg-sheen-500/10`}>
       <a
         href={pr.url}
         target="_blank"
@@ -172,51 +190,117 @@ export function PullRequestRow({
 
       <CopyLinkButton pr={pr} />
 
-      {pr.state === "OPEN" && onToggleDraft && <DraftToggleButton pr={pr} onToggleDraft={onToggleDraft} />}
-
-      <button
-        type="button"
-        onClick={() => onToggleSnooze(pr, snoozed)}
-        title={snoozed ? "Wake now" : "Snooze until this pull request is updated"}
-        aria-label={`${snoozed ? "Wake" : "Snooze"} ${pr.title}`}
-        className={`m-1.5 shrink-0 cursor-pointer rounded-md px-2 py-1.5 text-sm leading-none transition hover:bg-sheen-500/15 hover:grayscale-0 focus:opacity-100 group-hover:opacity-100 ${
-          snoozed ? "opacity-100" : "opacity-0 grayscale"
-        }`}
-      >
-        {snoozed ? <>&#9200;</> : <>&#128564;</>}
-      </button>
+      <RowMenu
+        pr={pr}
+        row={row}
+        snoozed={snoozed}
+        onToggleSnooze={onToggleSnooze}
+        onToggleDraft={onToggleDraft}
+        onRequestReviewers={onRequestReviewers}
+      />
 
       {overgrowthShown && <Overgrowth seed={pr.id} stage={overgrowth(pr.updatedAt)} />}
     </div>
   );
 }
 
-function DraftToggleButton({
+/** Every action on a pull request beyond opening it and copying its link. */
+function RowMenu({
   pr,
+  row,
+  snoozed,
+  onToggleSnooze,
   onToggleDraft,
+  onRequestReviewers,
 }: {
   pr: PullRequest;
-  onToggleDraft: (pullRequest: PullRequest) => Promise<void>;
+  /** The row whose right edge the menu and the reviewer picker line up with. */
+  row: HTMLElement | null;
+  snoozed: boolean;
+  onToggleSnooze: (pullRequest: PullRequest, snoozed: boolean) => void;
+  onToggleDraft?: (pullRequest: PullRequest) => Promise<void>;
+  onRequestReviewers?: (pullRequest: PullRequest, reviewers: ReviewerCandidate[]) => Promise<void>;
 }) {
-  const [busy, setBusy] = useState(false);
-  const label = pr.isDraft ? "Mark ready for review" : "Convert to draft";
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState<"menu" | "reviewers" | null>(null);
+  const [togglingDraft, setTogglingDraft] = useState(false);
+  const close = useCallback(() => setOpen(null), []);
+
+  const item =
+    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-ink-700 hover:bg-sheen-500/10 dark:text-ink-200";
 
   return (
-    <button
-      type="button"
-      disabled={busy}
-      onClick={() => {
-        setBusy(true);
-        void onToggleDraft(pr).finally(() => setBusy(false));
-      }}
-      title={label}
-      aria-label={`${label}: ${pr.title}`}
-      className={`my-1.5 ml-1.5 shrink-0 cursor-pointer rounded-md p-1.5 text-ink-400 transition hover:bg-sheen-500/15 hover:text-ink-800 focus:opacity-100 group-hover:opacity-100 disabled:cursor-wait dark:hover:text-ink-100 ${
-        busy ? "animate-pulse opacity-100" : "opacity-0"
-      }`}
-    >
-      {pr.isDraft ? <PullRequestIcon className="h-3.5 w-3.5" /> : <DraftIcon className="h-3.5 w-3.5" />}
-    </button>
+    <>
+      <button
+        ref={setAnchor}
+        type="button"
+        onClick={() => setOpen((current) => (current ? null : "menu"))}
+        title="More actions"
+        aria-label={`More actions for ${pr.title}`}
+        aria-haspopup="menu"
+        aria-expanded={open !== null}
+        className={`my-1.5 ml-0.5 shrink-0 cursor-pointer rounded-md p-1.5 text-ink-400 transition hover:bg-sheen-500/15 hover:text-ink-800 dark:hover:text-ink-100 ${
+          open ? "bg-sheen-500/15 text-ink-800 dark:text-ink-100" : ""
+        } ${togglingDraft ? "animate-pulse" : ""}`}
+      >
+        <MenuIcon className="h-3.5 w-3.5" />
+      </button>
+
+      {anchor && open === "menu" && (
+        <Popover anchor={anchor} edge={row} onClose={close} label={`Actions for ${pr.title}`} width={210} maxHeight={130}>
+          <div role="menu" className="py-1">
+            {pr.state === "OPEN" && onRequestReviewers && (
+              <button type="button" role="menuitem" className={item} onClick={() => setOpen("reviewers")}>
+                <UserPlusIcon className="h-3.5 w-3.5 shrink-0 text-ink-400" />
+                Request reviewers…
+              </button>
+            )}
+            {pr.state === "OPEN" && onToggleDraft && (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={togglingDraft}
+                className={`${item} disabled:cursor-wait disabled:opacity-50`}
+                onClick={() => {
+                  setOpen(null);
+                  setTogglingDraft(true);
+                  void onToggleDraft(pr).finally(() => setTogglingDraft(false));
+                }}
+              >
+                {pr.isDraft ? (
+                  <PullRequestIcon className="h-3.5 w-3.5 shrink-0 text-ink-400" />
+                ) : (
+                  <DraftIcon className="h-3.5 w-3.5 shrink-0 text-ink-400" />
+                )}
+                {pr.isDraft ? "Mark ready for review" : "Convert to draft"}
+              </button>
+            )}
+            <button
+              type="button"
+              role="menuitem"
+              className={item}
+              onClick={() => {
+                setOpen(null);
+                onToggleSnooze(pr, snoozed);
+              }}
+            >
+              <span className="w-3.5 shrink-0 text-center leading-none">{snoozed ? <>&#9200;</> : <>&#128564;</>}</span>
+              {snoozed ? "Wake now" : "Snooze until updated"}
+            </button>
+          </div>
+        </Popover>
+      )}
+
+      {anchor && open === "reviewers" && onRequestReviewers && (
+        <ReviewerPicker
+          pr={pr}
+          anchor={anchor}
+          edge={row}
+          onRequest={(reviewers) => onRequestReviewers(pr, reviewers)}
+          onClose={close}
+        />
+      )}
+    </>
   );
 }
 
@@ -244,9 +328,9 @@ function CopyLinkButton({ pr }: { pr: PullRequest }) {
       }
       title={label}
       aria-label={`Copy link to ${pr.title}`}
-      className={`my-1.5 ml-1.5 shrink-0 cursor-pointer rounded-md p-1.5 transition hover:bg-sheen-500/15 hover:text-ink-800 focus:opacity-100 group-hover:opacity-100 dark:hover:text-ink-100 ${
+      className={`my-1.5 ml-1.5 shrink-0 cursor-pointer rounded-md p-1.5 transition hover:bg-sheen-500/15 hover:text-ink-800 dark:hover:text-ink-100 ${
         outcome === "failed" ? "text-rose-500" : outcome === "copied" ? "text-emerald-500" : "text-ink-400"
-      } ${outcome ? "opacity-100" : "opacity-0"}`}
+      }`}
     >
       {outcome === "copied" ? <CheckIcon className="h-3.5 w-3.5" /> : <LinkIcon className="h-3.5 w-3.5" />}
     </button>

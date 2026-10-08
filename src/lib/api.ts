@@ -1,5 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppConfig, DashboardResponse, GlobalFilter, QueryPlan } from "../../shared/types.js";
+import type {
+  AppConfig,
+  DashboardResponse,
+  GlobalFilter,
+  ParentReviewers,
+  QueryPlan,
+  ReviewerCandidate,
+} from "../../shared/types.js";
 
 export interface ConfigResponse {
   config: AppConfig;
@@ -26,6 +33,14 @@ export const api = {
     call<QueryPlan>("explain_query", { query, globalFilters }),
   /** Resolves to whether GitHub now holds the pull request as a draft. */
   setDraft: (pullRequestId: string, draft: boolean) => call<boolean>("set_draft", { pullRequestId, draft }),
+  /** People who could review the pull request, narrowed to `query` when it is not empty. */
+  reviewerCandidates: (pullRequestId: string, query: string) =>
+    call<ReviewerCandidate[]>("reviewer_candidates", { pullRequestId, query }),
+  /** The reviewers of the open pull request this one is stacked on, or null when there is none. */
+  parentReviewers: (pullRequestId: string) => call<ParentReviewers | null>("parent_reviewers", { pullRequestId }),
+  /** Asks each of `userIds` to review the pull request, keeping the requests already open. */
+  requestReviewers: (pullRequestId: string, userIds: string[]) =>
+    call<void>("request_reviewers", { pullRequestId, userIds }),
   snooze: (pullRequestId: string) => call<void>("snooze", { pullRequestId }),
   wake: (pullRequestId: string) => call<void>("wake", { pullRequestId }),
 };

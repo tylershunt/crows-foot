@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AppConfig, DashboardResponse, PullRequest, SectionResult } from "../shared/types.js";
+import type {
+  AppConfig,
+  DashboardResponse,
+  PullRequest,
+  ReviewerCandidate,
+  SectionResult,
+} from "../shared/types.js";
 import { Section } from "./components/Section.js";
 import { Logo } from "./components/Logo.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
@@ -27,7 +33,6 @@ export function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
   const [filterText, setFilterText] = useState("");
-  const [settingsFocus, setSettingsFocus] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [overgrowthShown, setOvergrowthShown] = useState(
     () => localStorage.getItem(OVERGROWTH_STORAGE_KEY) !== "off",
@@ -142,7 +147,6 @@ export function App() {
       setConfigPath(path);
       setCollapsedOverrides({});
       setSettingsOpen(false);
-      setSettingsFocus(null);
       await refresh();
     },
     [refresh],
@@ -180,15 +184,35 @@ export function App() {
   const toggleDraft = useCallback(
     async (pullRequest: PullRequest) => {
       const draft = !pullRequest.isDraft;
-      setDashboard((current) => current && withDraft(current, pullRequest.id, draft));
+      setDashboard((current) => current && withPullRequest(current, pullRequest.id, (pr) => ({ ...pr, isDraft: draft })));
       try {
         const isDraft = await api.setDraft(pullRequest.id, draft);
-        setDashboard((current) => current && withDraft(current, pullRequest.id, isDraft));
+        setDashboard((current) => current && withPullRequest(current, pullRequest.id, (pr) => ({ ...pr, isDraft })));
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : String(caught));
       }
       // Sections that ask for `is:draft` or `-is:draft` take or give up the pull request.
       await refresh();
+    },
+    [refresh],
+  );
+
+  const requestReviewers = useCallback(
+    async (pullRequest: PullRequest, reviewers: ReviewerCandidate[]) => {
+      await api.requestReviewers(
+        pullRequest.id,
+        reviewers.map((reviewer) => reviewer.id),
+      );
+      const logins = reviewers.map((reviewer) => reviewer.login);
+      setDashboard(
+        (current) =>
+          current &&
+          withPullRequest(current, pullRequest.id, (pr) => ({
+            ...pr,
+            requestedReviewers: [...new Set([...pr.requestedReviewers, ...logins])],
+          })),
+      );
+      void refresh();
     },
     [refresh],
   );
@@ -246,10 +270,7 @@ export function App() {
           {activeGlobalFilters.length > 0 && (
             <button
               type="button"
-              onClick={() => {
-                setSettingsFocus(null);
-                setSettingsOpen(true);
-              }}
+              onClick={() => setSettingsOpen(true)}
               title={`Narrowing every section:\n${activeGlobalFilters.map((f) => f.query).join("\n")}`}
               className="flex shrink-0 items-center gap-1.5 rounded-full bg-sheen-500/10 px-2.5 py-1 text-xs text-sheen-600 transition hover:bg-sheen-500/20 dark:text-sheen-300"
             >
@@ -270,10 +291,7 @@ export function App() {
 
           <button
             type="button"
-            onClick={() => {
-              setSettingsFocus(null);
-              setSettingsOpen(true);
-            }}
+            onClick={() => setSettingsOpen(true)}
             title="Settings"
             aria-label="Settings"
             className="ml-auto shrink-0 rounded-lg p-1.5 text-ink-500 transition hover:bg-ink-200 hover:text-ink-800 dark:text-ink-400 dark:hover:bg-ink-800 dark:hover:text-ink-100"
@@ -309,13 +327,10 @@ export function App() {
                   onToggle={() =>
                     setCollapsedOverrides((current) => ({ ...current, [section.config.id]: !collapsed }))
                   }
-                  onEdit={() => {
-                    setSettingsFocus(section.config.id);
-                    setSettingsOpen(true);
-                  }}
                   onBurnDown={burnDown}
                   onToggleSnooze={toggleSnooze}
                   onToggleDraft={toggleDraft}
+                  onRequestReviewers={requestReviewers}
                   viewerLogin={dashboard?.viewer.login ?? null}
                   overgrowthShown={overgrowthShown}
                   stackColor={stackColor}
@@ -337,7 +352,6 @@ export function App() {
         <SettingsPanel
           config={config}
           configPath={configPath}
-          focusSectionId={settingsFocus}
           theme={theme}
           onTheme={setTheme}
           overgrowthShown={overgrowthShown}
@@ -346,10 +360,7 @@ export function App() {
           onReset={resetConfig}
           update={update}
           onUpdate={setUpdate}
-          onClose={() => {
-            setSettingsOpen(false);
-            setSettingsFocus(null);
-          }}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
     </div>
@@ -382,13 +393,17 @@ function intoSnoozedSection(dashboard: DashboardResponse, pullRequest: PullReque
   };
 }
 
-/** Marks every copy of one pull request on the dashboard as a draft or ready. */
-function withDraft(dashboard: DashboardResponse, pullRequestId: string, isDraft: boolean): DashboardResponse {
+/** Applies `update` to every copy of one pull request on the dashboard. */
+function withPullRequest(
+  dashboard: DashboardResponse,
+  pullRequestId: string,
+  update: (pullRequest: PullRequest) => PullRequest,
+): DashboardResponse {
   return {
     ...dashboard,
     sections: dashboard.sections.map((section) => ({
       ...section,
-      pullRequests: section.pullRequests.map((pr) => (pr.id === pullRequestId ? { ...pr, isDraft } : pr)),
+      pullRequests: section.pullRequests.map((pr) => (pr.id === pullRequestId ? update(pr) : pr)),
     })),
   };
 }

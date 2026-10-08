@@ -24,6 +24,22 @@ export interface Actor {
   url: string;
 }
 
+/** Someone who can be asked to review a pull request. */
+export interface ReviewerCandidate {
+  /** The GitHub node id a review request names. */
+  id: string;
+  login: string;
+  name: string | null;
+  avatarUrl: string;
+}
+
+/** The reviewers of the open pull request another is stacked on. */
+export interface ParentReviewers {
+  number: number;
+  /** Its requested reviewers, then those who reviewed it, without teams. */
+  reviewers: ReviewerCandidate[];
+}
+
 export interface Label {
   name: string;
   color: string;

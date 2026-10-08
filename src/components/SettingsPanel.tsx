@@ -62,7 +62,6 @@ const PALETTE_STORAGE_KEY = "crows-foot-token-palette";
 interface SettingsPanelProps {
   config: AppConfig;
   configPath: string;
-  focusSectionId: string | null;
   theme: "light" | "dark";
   onTheme: (theme: "light" | "dark") => void;
   overgrowthShown: boolean;
@@ -77,7 +76,6 @@ interface SettingsPanelProps {
 export function SettingsPanel({
   config,
   configPath,
-  focusSectionId,
   theme,
   onTheme,
   overgrowthShown,
@@ -98,8 +96,6 @@ export function SettingsPanel({
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateNote, setUpdateNote] = useState<string | null>(null);
   const activeQueryRef = useRef<HTMLTextAreaElement | null>(null);
-  const focusedQueryRef = useRef<HTMLTextAreaElement | null>(null);
-
   useEffect(() => {
     localStorage.setItem(PALETTE_STORAGE_KEY, paletteOpen ? "open" : "folded");
   }, [paletteOpen]);
@@ -115,16 +111,6 @@ export function SettingsPanel({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  // Arriving from one section's gear means editing that section's query, which
-  // sits far below the fold in a panel that opens at the top. Focusing it also
-  // makes it the target the token palette appends to.
-  useEffect(() => {
-    const query = focusedQueryRef.current;
-    if (!query) return;
-    query.scrollIntoView({ block: "center" });
-    query.focus();
-  }, [focusSectionId]);
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(config), [draft, config]);
 
@@ -381,11 +367,7 @@ export function SettingsPanel({
           {draft.sections.map((section, index) => (
             <div
               key={section.id}
-              className={`rounded-xl border bg-white p-4 dark:bg-ink-900 ${
-                section.id === focusSectionId
-                  ? "border-sheen-400 ring-2 ring-sheen-400/20"
-                  : "border-ink-200 dark:border-ink-800"
-              }`}
+              className="rounded-xl border border-ink-200 bg-white p-4 dark:border-ink-800 dark:bg-ink-900"
             >
               <div className="flex items-center gap-2">
                 <input
@@ -425,7 +407,6 @@ export function SettingsPanel({
               <textarea
                 ref={(node) => {
                   if (node && document.activeElement === node) activeQueryRef.current = node;
-                  if (section.id === focusSectionId) focusedQueryRef.current = node;
                 }}
                 data-index={index}
                 value={section.query}
