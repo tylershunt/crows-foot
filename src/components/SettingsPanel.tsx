@@ -5,7 +5,7 @@ import { slugify } from "../lib/format.js";
 import { titleBar } from "../lib/titlebar.js";
 import { checkForUpdate, type Update } from "../lib/update.js";
 import { QueryPreview } from "./QueryPreview.js";
-import { InstallUpdate } from "./UpdateBanner.js";
+import { InstallUpdate, WhatsNew } from "./UpdateBanner.js";
 import { ArrowUpIcon, ChevronDownIcon, CrowFootIcon, PlusIcon, TrashIcon } from "./icons.js";
 
 const GLOBAL_FILTER_SUGGESTIONS = [
@@ -341,27 +341,30 @@ export function SettingsPanel({
             <span className="text-ink-500 dark:text-ink-400">seconds</span>
           </label>
 
-          <div className="flex items-center gap-3 rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm dark:border-ink-800 dark:bg-ink-900">
-            <div className="min-w-0 flex-1">
-              <p className="font-medium text-ink-700 dark:text-ink-200">
-                This build{version ? ` is ${version}` : ""}
-              </p>
-              {updateNote && (
-                <p className="mt-0.5 text-xs text-ink-500 dark:text-ink-400">{updateNote}</p>
+          <div className="rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm dark:border-ink-800 dark:bg-ink-900">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-ink-700 dark:text-ink-200">
+                  This build{version ? ` is ${version}` : ""}
+                </p>
+                {updateNote && (
+                  <p className="mt-0.5 text-xs text-ink-500 dark:text-ink-400">{updateNote}</p>
+                )}
+              </div>
+              {update ? (
+                <InstallUpdate update={update} />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void lookForUpdate()}
+                  disabled={checkingUpdate}
+                  className="shrink-0 rounded-lg border border-ink-200 px-3 py-1.5 text-sm text-ink-600 transition hover:border-sheen-400 hover:text-ink-900 disabled:opacity-60 dark:border-ink-700 dark:text-ink-300 dark:hover:border-sheen-500 dark:hover:text-white"
+                >
+                  {checkingUpdate ? "Checking…" : "Check for updates"}
+                </button>
               )}
             </div>
-            {update ? (
-              <InstallUpdate update={update} />
-            ) : (
-              <button
-                type="button"
-                onClick={() => void lookForUpdate()}
-                disabled={checkingUpdate}
-                className="shrink-0 rounded-lg border border-ink-200 px-3 py-1.5 text-sm text-ink-600 transition hover:border-sheen-400 hover:text-ink-900 disabled:opacity-60 dark:border-ink-700 dark:text-ink-300 dark:hover:border-sheen-500 dark:hover:text-white"
-              >
-                {checkingUpdate ? "Checking…" : "Check for updates"}
-              </button>
-            )}
+            {update && <WhatsNew update={update} />}
           </div>
 
           {draft.sections.map((section, index) => (

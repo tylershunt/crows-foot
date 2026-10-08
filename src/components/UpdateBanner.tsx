@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { inlineSpans, type ReleaseNotes } from "../lib/changelog.js";
 import type { Update } from "../lib/update.js";
-import { installAndRelaunch } from "../lib/update.js";
+import { installAndRelaunch, releaseNotes } from "../lib/update.js";
 import { XCircleIcon } from "./icons.js";
 
 interface InstallUpdateProps {
@@ -70,17 +71,76 @@ interface UpdateBannerProps {
 
 export function UpdateBanner({ update, onDismiss }: UpdateBannerProps) {
   return (
-    <div className="mb-4 flex items-center gap-3 rounded-xl border border-sheen-400/40 bg-sheen-500/10 px-4 py-3 text-sm text-sheen-600 dark:border-sheen-500/30 dark:text-sheen-300">
-      <p className="min-w-0 flex-1">Crow&rsquo;s Foot {update.version} is ready.</p>
-      <InstallUpdate update={update} />
-      <button
-        type="button"
-        onClick={onDismiss}
-        title="Dismiss"
-        className="shrink-0 text-sheen-400 hover:text-sheen-600 dark:hover:text-sheen-300"
-      >
-        <XCircleIcon className="h-4 w-4" />
-      </button>
+    <div className="mb-4 rounded-xl border border-sheen-400/40 bg-sheen-500/10 px-4 py-3 text-sm text-sheen-600 dark:border-sheen-500/30 dark:text-sheen-300">
+      <div className="flex items-center gap-3">
+        <p className="min-w-0 flex-1">Crow&rsquo;s Foot {update.version} is ready.</p>
+        <InstallUpdate update={update} />
+        <button
+          type="button"
+          onClick={onDismiss}
+          title="Dismiss"
+          className="shrink-0 text-sheen-400 hover:text-sheen-600 dark:hover:text-sheen-300"
+        >
+          <XCircleIcon className="h-4 w-4" />
+        </button>
+      </div>
+      <WhatsNew update={update} />
     </div>
+  );
+}
+
+/** The changes `update` brings, under a heading for each version it spans. */
+export function WhatsNew({ update }: { update: Update }) {
+  const [notes, setNotes] = useState<ReleaseNotes[]>([]);
+
+  useEffect(() => {
+    let current = true;
+    setNotes([]);
+    void releaseNotes(update).then((found) => {
+      if (current) setNotes(found);
+    });
+    return () => {
+      current = false;
+    };
+  }, [update]);
+
+  if (notes.length === 0) return null;
+  const headed = notes.length > 1;
+
+  return (
+    <div className="mt-2 max-h-56 space-y-2 overflow-y-auto text-xs text-ink-700 dark:text-ink-200">
+      {notes.map((entry) => (
+        <section key={entry.version}>
+          {headed && <h3 className="mb-0.5 font-semibold text-ink-500 dark:text-ink-400">{entry.version}</h3>}
+          <ul className="list-disc space-y-0.5 pl-4">
+            {entry.changes.map((change) => (
+              <li key={change}>
+                <Change text={change} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function Change({ text }: { text: string }) {
+  return (
+    <>
+      {inlineSpans(text).map((span, index) =>
+        span.kind === "strong" ? (
+          <strong key={index} className="font-semibold">
+            {span.text}
+          </strong>
+        ) : span.kind === "code" ? (
+          <code key={index} className="rounded bg-ink-100 px-1 font-mono text-[11px] dark:bg-ink-800">
+            {span.text}
+          </code>
+        ) : (
+          <span key={index}>{span.text}</span>
+        ),
+      )}
+    </>
   );
 }

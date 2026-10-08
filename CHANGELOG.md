@@ -9,6 +9,8 @@ CI unless they change what a user sees.
 
 ## 0.10.2
 
+- The update banner, and the update row in Settings, list what changed in each
+  version between yours and the one offered.
 - Rows stay the same height when a pull request becomes a draft or gains a
   conflict.
 

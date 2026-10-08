@@ -353,6 +353,10 @@ A packaged build checks GitHub's latest release when it opens. If a newer one
 is published, a banner offers to install it and restart. Settings can ask the
 same question on demand.
 
+Both list the changes in every version between the running one and the one
+offered, read from `CHANGELOG.md` at the offered version's tag. Without that
+file, they list the offered release's own notes.
+
 ## Theme
 
 Each section is marked by a crow's track in its accent color on the section header. The color is per-section and set in Settings.
