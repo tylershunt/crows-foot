@@ -33,7 +33,8 @@
     "test:web": "tsx --test $(find src shared -name '*.test.ts' | sort)",
     "test:app": "cargo test --manifest-path src-tauri/Cargo.toml",
     "tauri": "tauri",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "set-version": "node scripts/set-version.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

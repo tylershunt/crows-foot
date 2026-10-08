@@ -52,9 +52,28 @@ the core's under `cargo test`. The tests that call GitHub are ignored by
 default; `cargo test --manifest-path src-tauri/Cargo.toml -- --ignored` runs
 them against your own credential.
 
-Pushing a `v*` tag builds the universal `.dmg` on CI and publishes it as a
-release, once `codesign` confirms the bundle is sealed. The same release holds
-`latest.json` and a `.app.tar.gz`, which a running copy reads to update itself.
+`main` carries the version its next release will ship. To release it, tag that
+version and push the tag:
+
+```bash
+git tag v$(node -p 'require("./package.json").version')
+git push origin main --tags
+```
+
+The tag builds the universal `.dmg` on CI and publishes it as a release, once
+`codesign` confirms the bundle is sealed. The same release holds `latest.json`
+and a `.app.tar.gz`, which a running copy reads to update itself. A tag that
+differs from the version in `package.json` fails the build.
+
+Once the release is published, CI commits the next patch version to `main`. For
+a minor or major release, set the version before tagging:
+
+```bash
+npm run set-version minor   # or major, or an exact x.y.z
+```
+
+The script writes the version to `package.json`, `package-lock.json`,
+`src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`.
 
 ### Where things live
 

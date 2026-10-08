@@ -31,6 +31,11 @@ jobs:
         with:
           workspaces: src-tauri
 
+      - name: Check the tag names the version being built
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: test "$TAG" = "v$(node -p 'require("./package.json").version')"
+
       - run: npm ci
 
       - run: npm test
@@ -74,3 +79,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ inputs.tag || github.ref_name }}
         run: gh release edit "$TAG" --draft=false --latest
+
+      # Main carries the version its next release will ship. A main already
+      # past the released version keeps the version it has.
+      - name: Open the next patch version on main
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          git fetch origin main
+          git checkout -f -B main FETCH_HEAD
+          if [ "v$(node -p 'require("./package.json").version')" != "$TAG" ]; then
+            echo "main is already past $TAG"
+            exit 0
+          fi
+          next=$(node scripts/set-version.mjs patch)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Set the version to $next"
+          git push origin main
