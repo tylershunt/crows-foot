@@ -343,7 +343,7 @@ function Separator() {
 
 function Chip({ children, className }: { children: ReactNode; className: string }) {
   return (
-    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${className}`}>
+    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-3 tracking-wide ${className}`}>
       {children}
     </span>
   );
