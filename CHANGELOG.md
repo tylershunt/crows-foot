@@ -7,6 +7,8 @@ Write for someone using the app: what they will see or can now do, one bullet
 per change. Name the control or screen it is on. Leave out refactors, tests and
 CI unless they change what a user sees.
 
+## 0.11.1
+
 ## 0.11.0
 
 - The update banner, and the update row in Settings, list what changed in each
