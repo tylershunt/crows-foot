@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 // Sets the app's version everywhere it is recorded and prints it.
 //
+// CHANGELOG.md gets a section for the new version. A section for the current
+// version that was never tagged is renamed, notes and all.
+//
 //   node scripts/set-version.mjs 1.4.0
 //   node scripts/set-version.mjs patch | minor | major
 
+import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -42,5 +46,22 @@ write("package-lock.json", JSON.stringify(lock, null, 2) + "\n");
 
 replaceOnce("src-tauri/Cargo.toml", /^version = "[^"]+"/m, `version = "${version}"`);
 replaceOnce("src-tauri/Cargo.lock", /(name = "crows-foot"\nversion = )"[^"]+"/, `$1"${version}"`);
+
+openChangelogSection();
+
+function openChangelogSection() {
+  const path = "CHANGELOG.md";
+  const text = read(path);
+  const heading = (v) => new RegExp(`^## ${v.replaceAll(".", "\\.")}$`, "m");
+  if (heading(version).test(text)) return;
+  const tagged = execFileSync("git", ["tag", "--list", `v${current}`], { cwd: root, encoding: "utf8" }).trim();
+  if (!tagged && heading(current).test(text)) {
+    write(path, text.replace(heading(current), `## ${version}`));
+    return;
+  }
+  const first = text.search(/^## /m);
+  if (first === -1) throw new Error(`${path} has no version sections`);
+  write(path, `${text.slice(0, first)}## ${version}\n\n${text.slice(first)}`);
+}
 
 console.log(version);

@@ -31,10 +31,20 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - name: Check the tag names the version being built
+      - name: Check the tag names the version being built, and write its notes
+        id: notes
         env:
           TAG: ${{ inputs.tag || github.ref_name }}
-        run: test "$TAG" = "v$(node -p 'require("./package.json").version')"
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          test "$TAG" = "v$version"
+          {
+            echo "body<<END_OF_NOTES"
+            node scripts/release-notes.mjs "$version"
+            echo
+            cat .github/release-install.md
+            echo "END_OF_NOTES"
+          } >> "$GITHUB_OUTPUT"
 
       - run: npm ci
 
@@ -50,18 +60,7 @@ jobs:
           args: --target universal-apple-darwin
           tagName: ${{ inputs.tag || github.ref_name }}
           releaseName: Crow's Foot ${{ inputs.tag || github.ref_name }}
-          releaseBody: |
-            One universal download for Apple Silicon and Intel Macs.
-
-            Open the `.dmg` and drag Crow's Foot to Applications. The app is
-            ad-hoc signed but not notarized, so the first launch needs
-            **right-click → Open**, or **System Settings → Privacy & Security
-            → Open Anyway**. Every launch after that is an ordinary one.
-
-            Later versions install from inside the app. Crow's Foot reads the
-            token the [`gh` CLI](https://cli.github.com) already stores, so
-            run `gh auth login` before the first launch if you have not
-            already.
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           prerelease: false
 

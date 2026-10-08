@@ -52,8 +52,9 @@ the core's under `cargo test`. The tests that call GitHub are ignored by
 default; `cargo test --manifest-path src-tauri/Cargo.toml -- --ignored` runs
 them against your own credential.
 
-`main` carries the version its next release will ship. To release it, tag that
-version and push the tag:
+`main` carries the version its next release will ship, and `CHANGELOG.md` holds
+a section for it. Add a bullet there with each change a user would notice. To
+release, tag the version and push the tag:
 
 ```bash
 git tag v$(node -p 'require("./package.json").version')
@@ -62,11 +63,14 @@ git push origin main --tags
 
 The tag builds the universal `.dmg` on CI and publishes it as a release, once
 `codesign` confirms the bundle is sealed. The same release holds `latest.json`
-and a `.app.tar.gz`, which a running copy reads to update itself. A tag that
-differs from the version in `package.json` fails the build.
+and a `.app.tar.gz`, which a running copy reads to update itself. The release
+notes are the version's `CHANGELOG.md` section, followed by
+`.github/release-install.md`. The build fails when the tag differs from the
+version in `package.json` or when the version's section is empty.
 
-Once the release is published, CI commits the next patch version to `main`. For
-a minor or major release, set the version before tagging:
+Once the release is published, CI commits the next patch version to `main`,
+with an empty section for it in `CHANGELOG.md`. For a minor or major release,
+set the version before tagging:
 
 ```bash
 npm run set-version minor   # or major, or an exact x.y.z
@@ -74,6 +78,8 @@ npm run set-version minor   # or major, or an exact x.y.z
 
 The script writes the version to `package.json`, `package-lock.json`,
 `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`.
+In `CHANGELOG.md` it renames the section of a version that was never tagged, and
+otherwise opens an empty section for the new version.
 
 ### Where things live
 
