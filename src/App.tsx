@@ -200,10 +200,7 @@ export function App() {
 
   const requestReviewers = useCallback(
     async (pullRequest: PullRequest, reviewers: ReviewerCandidate[]) => {
-      await api.requestReviewers(
-        pullRequest.id,
-        reviewers.map((reviewer) => reviewer.id),
-      );
+      await api.requestReviewers(pullRequest.id, reviewers);
       const logins = reviewers.map((reviewer) => reviewer.login);
       setDashboard(
         (current) =>

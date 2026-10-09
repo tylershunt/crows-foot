@@ -25,10 +25,14 @@ export interface Actor {
 }
 
 /** Someone who can be asked to review a pull request. */
+/** A person or a team who can be asked to review a pull request. */
 export interface ReviewerCandidate {
   /** The GitHub node id a review request names. */
   id: string;
+  kind: "user" | "team";
+  /** A person's login, or a team's name as `PullRequest.requestedReviewers` names it. */
   login: string;
+  /** A person's display name, or a team's `org/slug`. */
   name: string | null;
   avatarUrl: string;
 }
@@ -36,7 +40,7 @@ export interface ReviewerCandidate {
 /** The reviewers of the open pull request another is stacked on. */
 export interface ParentReviewers {
   number: number;
-  /** Its requested reviewers, then those who reviewed it, without teams. */
+  /** Its requested reviewers, people and teams, then the people who reviewed it. */
   reviewers: ReviewerCandidate[];
 }
 

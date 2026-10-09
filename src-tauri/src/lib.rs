@@ -84,11 +84,17 @@ async fn parent_reviewers(
     with_github(&crow, |token| async move { reviewers::of_parent(http, &token, id).await }).await
 }
 
-/// Asks each of `user_ids` to review the pull request.
+/// Asks each of `user_ids` and `team_ids` to review the pull request.
 #[tauri::command]
-async fn request_reviewers(crow: tauri::State<'_, Crow>, pull_request_id: String, user_ids: Vec<String>) -> Result<()> {
-    let (http, id, user_ids) = (&crow.http, pull_request_id.as_str(), user_ids.as_slice());
-    with_github(&crow, |token| async move { reviewers::request(http, &token, id, user_ids).await }).await
+async fn request_reviewers(
+    crow: tauri::State<'_, Crow>,
+    pull_request_id: String,
+    user_ids: Vec<String>,
+    team_ids: Vec<String>,
+) -> Result<()> {
+    let (http, id) = (&crow.http, pull_request_id.as_str());
+    let (user_ids, team_ids) = (user_ids.as_slice(), team_ids.as_slice());
+    with_github(&crow, |token| async move { reviewers::request(http, &token, id, user_ids, team_ids).await }).await
 }
 
 /// Runs `call` with the user's token, and once more with a fresh one when

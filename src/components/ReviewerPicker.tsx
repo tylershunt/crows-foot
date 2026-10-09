@@ -20,8 +20,9 @@ const PANEL_WIDTH = 288;
 const PANEL_HEIGHT = 340;
 
 /**
- * A panel for asking people to review `pr`: GitHub's suggestions until a search
- * is typed, then the repository's collaborators matching it. A pull request
+ * A panel for asking people and teams to review `pr`: GitHub's suggestions and
+ * the viewer's teams until a search is typed, then the repository's
+ * collaborators and the organization's teams matching it. A pull request
  * stacked on an open one is offered that one's reviewers, listed first.
  */
 export function ReviewerPicker({ pr, anchor, edge, onRequest, onClose }: ReviewerPickerProps) {
@@ -107,7 +108,7 @@ export function ReviewerPicker({ pr, anchor, edge, onRequest, onClose }: Reviewe
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => event.key === "Enter" && void submit()}
-          placeholder="Search collaborators…"
+          placeholder="Search people and teams…"
           className="w-full rounded-lg border border-ink-200 bg-ink-50 py-1.5 pl-7 pr-2 placeholder:text-ink-400 focus:border-sheen-400 focus:outline-none dark:border-ink-800 dark:bg-ink-950"
         />
       </div>
@@ -130,7 +131,7 @@ export function ReviewerPicker({ pr, anchor, edge, onRequest, onClose }: Reviewe
       <ul className="min-h-0 flex-1 overflow-y-auto py-1">
         {listed === null && !error && <li className="px-3 py-2 text-ink-400">Finding reviewers…</li>}
         {listed?.length === 0 && (
-          <li className="px-3 py-2 text-ink-400">{query ? "No collaborator matches." : "No suggestions."}</li>
+          <li className="px-3 py-2 text-ink-400">{query ? "No one matches." : "No suggestions."}</li>
         )}
         {listed?.map((candidate) => {
           const already = requested.has(candidate.login);
@@ -151,7 +152,11 @@ export function ReviewerPicker({ pr, anchor, edge, onRequest, onClose }: Reviewe
                 >
                   {picked && <CheckIcon className="h-2.5 w-2.5" strokeWidth={3} />}
                 </span>
-                <img src={candidate.avatarUrl} alt="" className="h-5 w-5 shrink-0 rounded-full" />
+                <img
+                  src={candidate.avatarUrl}
+                  alt=""
+                  className={`h-5 w-5 shrink-0 ${candidate.kind === "team" ? "rounded" : "rounded-full"}`}
+                />
                 <span className="min-w-0 truncate">
                   <span className="font-medium text-ink-800 dark:text-ink-100">{candidate.login}</span>
                   {candidate.name && <span className="ml-1.5 text-ink-400">{candidate.name}</span>}

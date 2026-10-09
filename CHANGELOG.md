@@ -9,6 +9,10 @@ CI unless they change what a user sees.
 
 ## 0.11.2
 
+- The reviewer picker offers teams: yours until you search, then the
+  organization's teams matching the search.
+- **Copy reviewers from #N** copies the teams requested on the parent too.
+
 ## 0.11.1
 
 - Pull requests from one stack sit together in a section, base first, even when

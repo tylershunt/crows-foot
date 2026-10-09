@@ -236,16 +236,19 @@ request moves to the sections that now match it. A refusal from GitHub appears
 at the top of the dashboard.
 
 On an open pull request you authored, **Request reviewers…** in the menu opens a
-reviewer picker. It lists
-GitHub's suggested reviewers until you type, then the repository's
-collaborators matching what you typed. Tick one or more and press **Request
-review**; reviewers already requested are shown ticked. Requests add to the ones
-already open, and GitHub's refusal, when it refuses, appears in the picker.
+reviewer picker. Until you type, it lists GitHub's suggested reviewers and the
+teams you belong to in the repository's organization. Once you type, it lists
+the repository's collaborators and the organization's teams matching what you
+typed. A team shows a square avatar and its `org/slug`. Tick one or more and
+press **Request review**; reviewers already requested are shown ticked. Requests
+add to the ones already open, and GitHub's refusal, when it refuses, appears in
+the picker. A team GitHub will not ask, such as one without access to the
+repository, is refused that way.
 
 On a pull request stacked on another open one, the picker lists the parent's
-reviewers first and offers **Copy reviewers from #1234**, which ticks everyone
-requested on the parent or who has reviewed it. Team requests are not copied.
-The parent is found by branch, so it need not be on the dashboard.
+reviewers first and offers **Copy reviewers from #1234**, which ticks every
+person and team requested on the parent and everyone who has reviewed it. The
+parent is found by branch, so it need not be on the dashboard.
 
 ## Burning down a section
 

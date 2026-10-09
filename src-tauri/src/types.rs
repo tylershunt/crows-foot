@@ -11,15 +11,28 @@ pub struct Actor {
     pub url: String,
 }
 
-/// Someone who can be asked to review a pull request.
+/// A person or a team who can be asked to review a pull request.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReviewerCandidate {
     /// The GitHub node id a review request names.
     pub id: String,
+    #[serde(default)]
+    pub kind: ReviewerKind,
+    /// A person's login, or a team's name as a pull request's requested
+    /// reviewers name it.
     pub login: String,
+    /// A person's display name, or a team's `org/slug`.
     pub name: Option<String>,
     pub avatar_url: String,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReviewerKind {
+    #[default]
+    User,
+    Team,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
