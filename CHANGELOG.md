@@ -9,6 +9,10 @@ CI unless they change what a user sees.
 
 ## 0.11.1
 
+- Pull requests from one stack sit together in a section, base first, even when
+  a pull request between them is in another section.
+- A stack takes its place in a section from its most recently updated member.
+
 ## 0.11.0
 
 - The update banner, and the update row in Settings, list what changed in each

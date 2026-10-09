@@ -117,15 +117,66 @@ test("a run of a stack is open where the other sections hold the rest", () => {
   ]);
 });
 
-test("two pull requests stacked on a parent in another section each name that parent", () => {
+test("two pull requests stacked on a parent in another section sit together, each naming that parent", () => {
   const parent = pullRequest("a", "a", "main");
   const left = pullRequest("b", "b", "a");
   const right = pullRequest("c", "c", "a");
 
   assert.deepEqual(ends([left, right], [parent]), [
-    { rows: ["b<-a"], parentElsewhere: true, childElsewhere: false },
-    { rows: ["c<-a"], parentElsewhere: true, childElsewhere: false },
+    { rows: ["b<-a", "c<-a"], parentElsewhere: true, childElsewhere: false },
   ]);
+});
+
+test("members of a stack sit together when the pull request between them is in another section", () => {
+  const bottom = pullRequest("a", "a", "main");
+  const middle = pullRequest("b", "b", "a");
+  const top = pullRequest("c", "c", "b");
+
+  assert.deepEqual(
+    groupIntoStacks([top, pullRequest("z", "z", "main"), bottom], [middle]).map((group) =>
+      group.rows.map((row) => row.pullRequest.id),
+    ),
+    [["a", "c"], ["z"]],
+  );
+});
+
+function updated(pr: PullRequest, updatedAt: string): PullRequest {
+  return { ...pr, updatedAt };
+}
+
+function order(pullRequests: PullRequest[]): string[][] {
+  return groupIntoStacks(pullRequests).map((group) => group.rows.map((row) => row.pullRequest.id));
+}
+
+test("a stack sits among the other pull requests by its most recently updated member", () => {
+  const rows = order([
+    updated(pullRequest("fresh", "fresh", "main"), "2026-10-09T12:00:00Z"),
+    updated(pullRequest("top", "top", "base"), "2026-10-09T10:00:00Z"),
+    updated(pullRequest("middling", "middling", "main"), "2026-10-09T08:00:00Z"),
+    updated(pullRequest("base", "base", "main"), "2026-10-01T00:00:00Z"),
+  ]);
+
+  assert.deepEqual(rows, [["fresh"], ["base", "top"], ["middling"]]);
+});
+
+test("a stack's rows run parent before child, whichever was updated last", () => {
+  const rows = order([
+    updated(pullRequest("child", "child", "parent"), "2026-10-09T12:00:00Z"),
+    updated(pullRequest("parent", "parent", "main"), "2026-10-01T00:00:00Z"),
+  ]);
+
+  assert.deepEqual(rows, [["parent", "child"]]);
+});
+
+test("equally fresh groups keep the order they arrived in", () => {
+  const at = "2026-10-09T12:00:00Z";
+  assert.deepEqual(
+    order([
+      updated(pullRequest("q", "q", "main"), at),
+      updated(pullRequest("p", "p", "main"), at),
+    ]),
+    [["q"], ["p"]],
+  );
 });
 
 test("a stack held in one section stays closed beside an unrelated pull request", () => {

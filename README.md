@@ -309,6 +309,9 @@ Pull requests stacked on one another are moved next to each other and joined by
 a bar in the stack's own color, drawn in the gutter left of the unread marker. Rows are not indented; instead each one names the
 pull request it sits on, as `on #1234`. Hovering that gives the parent's title.
 
+A stack's rows run from its base upwards. The stack sits among the section's
+other pull requests by its most recently updated member.
+
 A stack's color comes from a fixed palette, chosen by the number of the pull
 request at the bottom of the stack, so a stack that spreads across sections —
 one member approved, another still waiting — wears one color in all of them.
@@ -324,9 +327,11 @@ merges into that one's branch in the same repository. That is how Graphite,
 `gh`, and hand-built stacks all express the relationship, so no extra tooling
 or token is involved.
 
-Only the members a section's own query returned are joined as one bar. When
-the parent or a child is in another section, that end of the bar is left open,
-and a member sitting in a section by itself still carries the open piece. A
+Only the members a section's own query returned are joined as one bar, and all
+of them are, including members whose link runs through a pull request in
+another section. When the parent or a child is in another section, that end of
+the bar is left open, and a member sitting in a section by itself still carries
+the open piece. A
 pull request built on a branch whose pull request is not on the dashboard is
 marked with a stack icon alone, in its stack's color; hover it to see the
 branch it builds on.

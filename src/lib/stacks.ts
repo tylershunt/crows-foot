@@ -33,53 +33,76 @@ export interface StackGroup {
 }
 
 /**
- * Groups pull requests that are stacked on one another, preserving the incoming
- * order otherwise. Every input appears in exactly one group.
+ * Groups the pull requests that share a stack. Every input appears in exactly
+ * one group.
  *
  * A pull request is stacked on another when it merges into that one's branch
  * within the same repository, which is how Graphite, `gh`, and hand-built
  * stacks all express the relationship.
  *
  * `elsewhere` holds pull requests shown apart from this list, such as the other
- * sections. They name a parent and mark where the stack continues, and they are
- * not grouped into it.
+ * sections. They link the members of a stack they sit inside, name a parent,
+ * and mark where the stack continues, and they are not grouped into it.
+ *
+ * Groups are ordered by their most recently updated member, newest first, and
+ * keep the incoming order between equally fresh groups.
  */
 export function groupIntoStacks(pullRequests: PullRequest[], elsewhere: PullRequest[] = []): StackGroup[] {
-  const parents = parentsOf(pullRequests);
-  const knownParents = parentsOf([...elsewhere, ...pullRequests]);
-  const children = childrenOf(pullRequests, parents);
-  const knownChildren = childrenOf([...pullRequests, ...elsewhere], knownParents);
+  const members = new Set(pullRequests.map((pullRequest) => pullRequest.id));
+  const apart = elsewhere.filter((pullRequest) => !members.has(pullRequest.id));
+  const everyone = [...pullRequests, ...apart];
+  const knownParents = parentsOf([...apart, ...pullRequests]);
+  const knownChildren = childrenOf(everyone, knownParents);
+  const stackOf = stackIds(everyone, knownParents);
 
-  const placed = new Set<string>();
-  const collect = (current: PullRequest, rows: StackRow[]) => {
-    if (placed.has(current.id)) return;
-    placed.add(current.id);
-    const parent = knownParents.get(current.id) ?? null;
-    rows.push({
-      pullRequest: current,
-      parent,
-      detached: !parent && current.targetsNonDefaultBranch,
-    });
-    for (const child of children.get(current.id) ?? []) collect(child, rows);
-  };
+  const byStack = new Map<string, PullRequest[]>();
+  for (const pullRequest of pullRequests) {
+    const stack = stackOf.get(pullRequest.id)!;
+    byStack.set(stack, [...(byStack.get(stack) ?? []), pullRequest]);
+  }
 
-  const groups: StackGroup[] = [];
-  const groupFrom = (pullRequest: PullRequest) => {
+  const groups = [...byStack.values()].map((stackMembers) => {
     const rows: StackRow[] = [];
-    collect(pullRequest, rows);
-    if (rows.length > 0) groups.push(withEnds(rows, knownParents, knownChildren));
+    const visited = new Set<string>();
+    const collect = (current: PullRequest) => {
+      if (visited.has(current.id)) return;
+      visited.add(current.id);
+      if (members.has(current.id)) {
+        const parent = knownParents.get(current.id) ?? null;
+        rows.push({ pullRequest: current, parent, detached: !parent && current.targetsNonDefaultBranch });
+      }
+      for (const child of knownChildren.get(current.id) ?? []) collect(child);
+    };
+    for (const pullRequest of stackMembers) collect(bottomOf(pullRequest, knownParents));
+    // Branches that form a cycle have no bottom to reach every member from.
+    for (const pullRequest of stackMembers) collect(pullRequest);
+    return withEnds(rows, knownParents, knownChildren);
+  });
+
+  return groups
+    .map((group, index) => ({ group, index, freshest: freshest(group) }))
+    .sort((a, b) => (a.freshest === b.freshest ? a.index - b.index : a.freshest < b.freshest ? 1 : -1))
+    .map(({ group }) => group);
+}
+
+function freshest(group: StackGroup): string {
+  return group.rows.reduce((latest, row) => {
+    const updated = row.pullRequest.updatedAt ?? "";
+    return updated > latest ? updated : latest;
+  }, "");
+}
+
+/** A key shared by every pull request in the same stack, keyed by pull request id. */
+function stackIds(pullRequests: PullRequest[], parents: Map<string, PullRequest>): Map<string, string> {
+  const root = new Map<string, string>(pullRequests.map((pullRequest) => [pullRequest.id, pullRequest.id]));
+  const find = (id: string): string => {
+    let current = id;
+    while (root.get(current) !== current) current = root.get(current)!;
+    root.set(id, current);
+    return current;
   };
-
-  for (const pullRequest of pullRequests) {
-    if (!parents.has(pullRequest.id)) groupFrom(pullRequest);
-  }
-  // Branches that form a cycle have no top; emitting them here keeps the
-  // grouping total rather than dropping pull requests from the section.
-  for (const pullRequest of pullRequests) {
-    if (!placed.has(pullRequest.id)) groupFrom(pullRequest);
-  }
-
-  return groups;
+  for (const [child, parent] of parents) root.set(find(child), find(parent.id));
+  return new Map(pullRequests.map((pullRequest) => [pullRequest.id, find(pullRequest.id)]));
 }
 
 function withEnds(
