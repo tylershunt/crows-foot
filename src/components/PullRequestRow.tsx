@@ -7,9 +7,10 @@ import type {
   ReviewState,
   SectionConfig,
 } from "../../shared/types.js";
-import { copyLink } from "../lib/external.js";
+import { copyText } from "../lib/external.js";
 import { absoluteTime, readableTextColor, relativeAge } from "../lib/format.js";
 import { overgrowth } from "../lib/overgrowth.js";
+import { markdownLinkList } from "../lib/stackLinks.js";
 import { Overgrowth } from "./Overgrowth.js";
 import { Popover } from "./Popover.js";
 import { ReviewerPicker } from "./ReviewerPicker.js";
@@ -57,6 +58,11 @@ interface PullRequestRowProps {
   detached?: boolean;
   /** The color of the stack this row belongs to, worn by its stack marker. */
   stackColor: string;
+  /**
+   * The rows of this row's stack shown in its section, base first. The menu
+   * offers to copy their links when there are two or more.
+   */
+  stackMembers?: PullRequest[];
 }
 
 export function PullRequestRow({
@@ -70,6 +76,7 @@ export function PullRequestRow({
   stackedOn = null,
   detached = false,
   stackColor,
+  stackMembers = [],
 }: PullRequestRowProps) {
   const { ref: titleRef, title: titleTooltip } = useOverflowTitle<HTMLSpanElement>(pr.title);
   const [row, setRow] = useState<HTMLDivElement | null>(null);
@@ -197,6 +204,7 @@ export function PullRequestRow({
         onToggleSnooze={onToggleSnooze}
         onToggleDraft={onToggleDraft}
         onRequestReviewers={onRequestReviewers}
+        stackMembers={stackMembers}
       />
 
       {overgrowthShown && <Overgrowth seed={pr.id} stage={overgrowth(pr.updatedAt)} />}
@@ -212,6 +220,7 @@ function RowMenu({
   onToggleSnooze,
   onToggleDraft,
   onRequestReviewers,
+  stackMembers,
 }: {
   pr: PullRequest;
   /** The row whose right edge the menu and the reviewer picker line up with. */
@@ -220,11 +229,22 @@ function RowMenu({
   onToggleSnooze: (pullRequest: PullRequest, snoozed: boolean) => void;
   onToggleDraft?: (pullRequest: PullRequest) => Promise<void>;
   onRequestReviewers?: (pullRequest: PullRequest, reviewers: ReviewerCandidate[]) => Promise<void>;
+  stackMembers: PullRequest[];
 }) {
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState<"menu" | "reviewers" | null>(null);
   const [togglingDraft, setTogglingDraft] = useState(false);
-  const close = useCallback(() => setOpen(null), []);
+  const [stackCopy, setStackCopy] = useState<"copied" | "failed" | null>(null);
+  const close = useCallback(() => {
+    setOpen(null);
+    setStackCopy(null);
+  }, []);
+
+  useEffect(() => {
+    if (!stackCopy) return;
+    const timeout = setTimeout(close, COPY_CONFIRMATION_MS);
+    return () => clearTimeout(timeout);
+  }, [stackCopy, close]);
 
   const item =
     "flex w-full items-center gap-2 px-3 py-1.5 text-left text-ink-700 hover:bg-sheen-500/10 dark:text-ink-200";
@@ -247,7 +267,7 @@ function RowMenu({
       </button>
 
       {anchor && open === "menu" && (
-        <Popover anchor={anchor} edge={row} onClose={close} label={`Actions for ${pr.title}`} width={210} maxHeight={130}>
+        <Popover anchor={anchor} edge={row} onClose={close} label={`Actions for ${pr.title}`} width={210} maxHeight={160}>
           <div role="menu" className="py-1">
             {pr.state === "OPEN" && onRequestReviewers && (
               <button type="button" role="menuitem" className={item} onClick={() => setOpen("reviewers")}>
@@ -273,6 +293,34 @@ function RowMenu({
                   <DraftIcon className="h-3.5 w-3.5 shrink-0 text-ink-400" />
                 )}
                 {pr.isDraft ? "Mark ready for review" : "Convert to draft"}
+              </button>
+            )}
+            {stackMembers.length > 1 && (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={stackCopy !== null}
+                title="Copies a Markdown list linking each pull request of this stack in this section, base first"
+                className={`${item} disabled:cursor-default`}
+                onClick={() =>
+                  copyText(markdownLinkList(stackMembers)).then(
+                    () => setStackCopy("copied"),
+                    () => setStackCopy("failed"),
+                  )
+                }
+              >
+                {stackCopy === "copied" ? (
+                  <CheckIcon className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                ) : (
+                  <StackIcon
+                    className={`h-3.5 w-3.5 shrink-0 ${stackCopy === "failed" ? "text-rose-500" : "text-ink-400"}`}
+                  />
+                )}
+                {stackCopy === "copied"
+                  ? `Copied ${stackMembers.length} links`
+                  : stackCopy === "failed"
+                    ? "Could not copy the links"
+                    : `Copy stack links (${stackMembers.length})`}
               </button>
             )}
             <button
@@ -321,7 +369,7 @@ function CopyLinkButton({ pr }: { pr: PullRequest }) {
     <button
       type="button"
       onClick={() =>
-        copyLink(pr.url).then(
+        copyText(pr.url).then(
           () => setOutcome("copied"),
           () => setOutcome("failed"),
         )

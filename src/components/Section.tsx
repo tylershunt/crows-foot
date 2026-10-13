@@ -110,6 +110,7 @@ export function Section({
               <>
                 {groups.map((group) => {
                   const color = stackColor(group.rows[0]!.pullRequest);
+                  const stackMembers = group.rows.map((entry) => entry.pullRequest);
                   const row = (entry: (typeof group.rows)[number]) => {
                     const authored = viewerLogin !== null && entry.pullRequest.author?.login === viewerLogin;
                     return (
@@ -125,6 +126,7 @@ export function Section({
                         stackedOn={entry.parent}
                         detached={entry.detached}
                         stackColor={color}
+                        stackMembers={stackMembers}
                       />
                     );
                   };

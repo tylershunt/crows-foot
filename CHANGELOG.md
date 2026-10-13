@@ -12,6 +12,8 @@ CI unless they change what a user sees.
 - The reviewer picker offers teams: yours until you search, then the
   organization's teams matching the search.
 - **Copy reviewers from #N** copies the teams requested on the parent too.
+- **Copy stack links** in a stacked row's menu copies a Markdown list linking
+  each pull request of that stack in the section, base first.
 
 ## 0.11.1
 

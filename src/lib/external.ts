@@ -6,9 +6,9 @@ export async function openExternal(url: string): Promise<void> {
   await openUrl(url);
 }
 
-/** Puts a link on the system clipboard as plain text. */
-export async function copyLink(url: string): Promise<void> {
-  await writeText(url);
+/** Puts text on the system clipboard as plain text. */
+export async function copyText(text: string): Promise<void> {
+  await writeText(text);
 }
 
 /**
