@@ -7,7 +7,7 @@ Write for someone using the app: what they will see or can now do, one bullet
 per change. Name the control or screen it is on. Leave out refactors, tests and
 CI unless they change what a user sees.
 
-## 0.11.3
+## 0.12.0
 
 - **Write queries with a model** in Settings stores an Anthropic or OpenAI API
   key in the Keychain and lets you pick the model.
