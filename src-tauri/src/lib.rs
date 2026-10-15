@@ -1,3 +1,4 @@
+mod browser;
 mod config;
 mod error;
 mod github;
@@ -21,6 +22,14 @@ struct Crow {
     snoozes: SnoozeStore,
     tokens: TokenCache,
     http: reqwest::Client,
+}
+
+/// Opens each pull request URL as a browser tab, in the order given.
+#[tauri::command]
+async fn open_in_browser(urls: Vec<String>) -> Result<()> {
+    tauri::async_runtime::spawn_blocking(move || browser::open_all(&urls))
+        .await
+        .map_err(|error| error::AppError::new(error.to_string()))?
 }
 
 #[tauri::command]
@@ -152,7 +161,8 @@ pub fn run() {
             parent_reviewers,
             request_reviewers,
             snooze,
-            wake
+            wake,
+            open_in_browser
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -9,6 +9,9 @@ CI unless they change what a user sees.
 
 ## 0.11.3
 
+- The flame on a section header opens the section's first pull request too, and
+  opens every tab in the order the section shows.
+
 ## 0.11.2
 
 - The reviewer picker offers teams: yours until you search, then the

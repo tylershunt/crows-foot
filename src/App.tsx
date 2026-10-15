@@ -15,7 +15,6 @@ import { enabledGlobalFilters } from "../shared/query.js";
 import { SNOOZED_SECTION } from "../shared/snoozed.js";
 import { api } from "./lib/api.js";
 import { badgeCount, showOnTheDock } from "./lib/badge.js";
-import { openExternal } from "./lib/external.js";
 import { stackColors } from "./lib/stackColor.js";
 import { BESIDE_WINDOW_CONTROLS, titleBar } from "./lib/titlebar.js";
 import { checkForUpdate, type Update } from "./lib/update.js";
@@ -155,8 +154,7 @@ export function App() {
 
   const burnDown = useCallback(async (pullRequests: PullRequest[]) => {
     try {
-      // Opened one at a time so the browser's tabs land in the order shown here.
-      for (const pullRequest of pullRequests) await openExternal(pullRequest.url);
+      await api.openInBrowser(pullRequests.map((pullRequest) => pullRequest.url));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     }

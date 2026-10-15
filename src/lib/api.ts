@@ -47,4 +47,6 @@ export const api = {
     }),
   snooze: (pullRequestId: string) => call<void>("snooze", { pullRequestId }),
   wake: (pullRequestId: string) => call<void>("wake", { pullRequestId }),
+  /** Opens each URL as a browser tab, in the order given. */
+  openInBrowser: (urls: string[]) => call<void>("open_in_browser", { urls }),
 };
