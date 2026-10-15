@@ -9,6 +9,12 @@ CI unless they change what a user sees.
 
 ## 0.11.3
 
+- **Write queries with a model** in Settings stores an Anthropic or OpenAI API
+  key in the Keychain and lets you pick the model.
+- The sparkles button on a section opens a chat that writes its query from a
+  description. Reply to refine it; each answer shows its **Runs as** preview
+  before you use it.
+- **New section from a description** writes a new section's title and query.
 - The flame on a section header opens the section's first pull request too, and
   opens every tab in the order the section shows.
 

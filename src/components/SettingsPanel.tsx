@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import type { AppConfig, GlobalFilter, SectionConfig } from "../../shared/types.js";
+import type { AppConfig, GlobalFilter, QueryDraft, SectionConfig } from "../../shared/types.js";
 import { slugify } from "../lib/format.js";
 import { titleBar } from "../lib/titlebar.js";
+import { useQueryModel } from "../lib/queryModel.js";
 import { checkForUpdate, type Update } from "../lib/update.js";
+import { ModelSettings } from "./ModelSettings.js";
 import { QueryPreview } from "./QueryPreview.js";
+import { QueryWriter } from "./QueryWriter.js";
 import { InstallUpdate, WhatsNew } from "./UpdateBanner.js";
-import { ArrowUpIcon, ChevronDownIcon, CrowFootIcon, PlusIcon, TrashIcon } from "./icons.js";
+import { ArrowUpIcon, ChevronDownIcon, CrowFootIcon, PlusIcon, SparklesIcon, TrashIcon } from "./icons.js";
 
 const GLOBAL_FILTER_SUGGESTIONS = [
   "-author:app/dependabot",
@@ -96,6 +99,9 @@ export function SettingsPanel({
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateNote, setUpdateNote] = useState<string | null>(null);
   const activeQueryRef = useRef<HTMLTextAreaElement | null>(null);
+  const queryModel = useQueryModel();
+  const [describing, setDescribing] = useState<ReadonlySet<string>>(new Set());
+  const [describingNewSection, setDescribingNewSection] = useState(false);
   useEffect(() => {
     localStorage.setItem(PALETTE_STORAGE_KEY, paletteOpen ? "open" : "folded");
   }, [paletteOpen]);
@@ -152,15 +158,23 @@ export function SettingsPanel({
     setDraft((current) => ({ ...current, sections: current.sections.filter((_, i) => i !== index) }));
   }
 
-  function addSection() {
+  function toggleDescribing(sectionId: string) {
+    setDescribing((current) => {
+      const next = new Set(current);
+      if (!next.delete(sectionId)) next.add(sectionId);
+      return next;
+    });
+  }
+
+  function addSection(written?: QueryDraft) {
     setDraft((current) => ({
       ...current,
       sections: [
         ...current.sections,
         {
           id: `section-${Date.now()}`,
-          title: "New section",
-          query: "is:open is:pr involves:@me archived:false",
+          title: written?.title ?? "New section",
+          query: written?.query ?? "is:open is:pr involves:@me archived:false",
           limit: 25,
           collapsed: false,
           color: SWATCHES[current.sections.length % SWATCHES.length] ?? "#9292ad",
@@ -367,6 +381,14 @@ export function SettingsPanel({
             {update && <WhatsNew update={update} />}
           </div>
 
+          <ModelSettings
+            keys={queryModel.keys}
+            keyError={queryModel.keyError}
+            refreshKeys={queryModel.refreshKeys}
+            choice={queryModel.choice}
+            onChoice={queryModel.setChoice}
+          />
+
           {draft.sections.map((section, index) => (
             <div
               key={section.id}
@@ -379,6 +401,17 @@ export function SettingsPanel({
                   placeholder="Section title"
                   className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm font-semibold text-ink-900 hover:border-ink-200 focus:border-ink-300 focus:outline-none dark:text-white dark:hover:border-ink-700"
                 />
+                <button
+                  type="button"
+                  onClick={() => toggleDescribing(section.id)}
+                  aria-pressed={describing.has(section.id)}
+                  title="Describe this section and have a model write its query"
+                  className={`rounded p-1.5 transition hover:bg-sheen-500/10 hover:text-sheen-600 dark:hover:text-sheen-400 ${
+                    describing.has(section.id) ? "bg-sheen-500/10 text-sheen-600 dark:text-sheen-400" : "text-ink-400"
+                  }`}
+                >
+                  <SparklesIcon className="h-3.5 w-3.5" />
+                </button>
                 <button
                   type="button"
                   onClick={() => moveSection(index, -1)}
@@ -424,6 +457,17 @@ export function SettingsPanel({
               />
 
               <QueryPreview query={section.query} globalFilters={draft.globalFilters} />
+
+              {describing.has(section.id) && (
+                <QueryWriter
+                  model={queryModel.ready}
+                  currentQuery={section.query}
+                  globalFilters={draft.globalFilters}
+                  placeholder="Describe what this section should hold, or how to change it"
+                  onAccept={(written) => updateSection(index, { query: written.query })}
+                  onCancel={() => toggleDescribing(section.id)}
+                />
+              )}
 
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <label className="flex items-center gap-1.5 text-xs text-ink-500 dark:text-ink-400">
@@ -480,14 +524,42 @@ export function SettingsPanel({
             </div>
           ))}
 
-          <button
-            type="button"
-            onClick={addSection}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-ink-300 py-3 text-sm text-ink-500 transition hover:border-sheen-400 hover:text-ink-700 dark:border-ink-700 dark:text-ink-400 dark:hover:border-sheen-500 dark:hover:text-ink-200"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Add section
-          </button>
+          {describingNewSection && (
+            <div className="rounded-xl border border-ink-200 bg-white p-4 dark:border-ink-800 dark:bg-ink-900">
+              <h3 className="text-sm font-semibold text-ink-900 dark:text-white">New section from a description</h3>
+              <QueryWriter
+                model={queryModel.ready}
+                currentQuery={null}
+                globalFilters={draft.globalFilters}
+                placeholder="e.g. my pull requests with failing checks that nobody has reviewed"
+                onAccept={(written) => {
+                  addSection(written);
+                  setDescribingNewSection(false);
+                }}
+                onCancel={() => setDescribingNewSection(false)}
+              />
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => addSection()}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-ink-300 py-3 text-sm text-ink-500 transition hover:border-sheen-400 hover:text-ink-700 dark:border-ink-700 dark:text-ink-400 dark:hover:border-sheen-500 dark:hover:text-ink-200"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Add section
+            </button>
+            <button
+              type="button"
+              onClick={() => setDescribingNewSection(true)}
+              disabled={describingNewSection}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-ink-300 py-3 text-sm text-ink-500 transition hover:border-sheen-400 hover:text-ink-700 disabled:opacity-50 dark:border-ink-700 dark:text-ink-400 dark:hover:border-sheen-500 dark:hover:text-ink-200"
+            >
+              <SparklesIcon className="h-4 w-4" />
+              New section from a description
+            </button>
+          </div>
 
           <div className="sticky bottom-0 z-10 rounded-xl border border-ink-200 bg-white/95 p-3 shadow-lg backdrop-blur dark:border-ink-800 dark:bg-ink-900/95">
             <div className="flex items-center gap-2">

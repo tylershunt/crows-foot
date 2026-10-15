@@ -133,6 +133,27 @@ sent to GitHub, as a link that runs it on github.com, and whatever the query
 asks of the results afterwards. That is the fastest way to check a query does
 what you meant.
 
+## Writing queries with a model
+
+Settings can have a model write a section's query from a description. Under
+**Write queries with a model**, pick Anthropic or OpenAI and paste an API key.
+The app checks the key with the provider and stores it in the macOS Keychain;
+it never enters `config.json`. The model list is the provider's own, with a
+recommended model chosen until you pick another.
+
+The sparkles button on a section opens a chat under its query. Describe what
+the section should hold, or how to change the query it has, and the model
+answers with a query, a sentence on what it finds, and its **Runs as** preview.
+Reply to ask for changes; each answer revises the last. **Use this query** on
+any answer puts it in the section, and **Save changes** keeps it as with any
+edit. **Start over** clears the chat. **New section from a description**,
+beside **Add section**, does the same for a section that does not exist yet,
+title included.
+
+The model is given a description of this query language. Its query is compiled
+with your enabled global filters, and a query that fails to compile goes back to
+the model with the error, up to three times.
+
 ## The query language
 
 Anything GitHub's issue search understands means the same thing here and is sent

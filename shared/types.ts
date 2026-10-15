@@ -162,3 +162,29 @@ export interface PlannedSearch {
   /** The qualifiers GitHub cannot answer, asked of the rows it returns. */
   keptLocally: string[];
 }
+
+/** A company whose models can write section queries with the user's API key. */
+export type LlmProvider = "anthropic" | "openai";
+
+/** Whether a provider's API key is in the Keychain. */
+export interface LlmKeyState {
+  provider: LlmProvider;
+  stored: boolean;
+}
+
+/** A model a provider offers for writing queries. */
+export interface LlmModel {
+  id: string;
+  name: string;
+  /** The model offered first when the user has not chosen one. */
+  recommended: boolean;
+}
+
+/** What a section should be, as a model wrote it. */
+export interface QueryDraft {
+  /** A short section title for the query. */
+  title: string;
+  query: string;
+  /** One sentence on what the query finds. */
+  summary: string;
+}

@@ -198,3 +198,10 @@ export const AlertIcon = (p: IconProps) => (
     <path d="M12 10v4M12 17v.01" />
   </Icon>
 );
+
+export const SparklesIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M10 3.5 11.6 8a2 2 0 0 0 1.2 1.2l4.5 1.6-4.5 1.6a2 2 0 0 0-1.2 1.2L10 18.1l-1.6-4.5a2 2 0 0 0-1.2-1.2L2.7 10.8l4.5-1.6A2 2 0 0 0 8.4 8Z" />
+    <path d="M18.5 3v4M16.5 5h4M18 16v3M16.5 17.5h3" />
+  </Icon>
+);

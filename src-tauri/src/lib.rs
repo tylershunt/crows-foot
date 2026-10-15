@@ -2,6 +2,7 @@ mod browser;
 mod config;
 mod error;
 mod github;
+mod llm;
 mod query;
 mod reviewers;
 mod snooze;
@@ -22,6 +23,53 @@ struct Crow {
     snoozes: SnoozeStore,
     tokens: TokenCache,
     http: reqwest::Client,
+}
+
+/// Each provider, and whether its API key is in the Keychain.
+#[tauri::command]
+fn llm_keys() -> Result<Vec<llm::KeyState>> {
+    llm::Provider::ALL.iter().map(|&provider| Ok(llm::KeyState { provider, stored: llm::has_key(provider)? })).collect()
+}
+
+/// Checks `key` against the provider, then stores it in the Keychain, and
+/// returns the models it opens.
+#[tauri::command]
+async fn set_llm_key(crow: tauri::State<'_, Crow>, provider: llm::Provider, key: String) -> Result<Vec<llm::Model>> {
+    let previous = llm::has_key(provider)?;
+    llm::store_key(provider, &key)?;
+    match llm::models(&crow.http, provider).await {
+        Ok(models) => Ok(models),
+        Err(error) => {
+            if !previous {
+                llm::forget_key(provider)?;
+            }
+            Err(error)
+        }
+    }
+}
+
+#[tauri::command]
+fn forget_llm_key(provider: llm::Provider) -> Result<()> {
+    llm::forget_key(provider)
+}
+
+/// The models the provider's key opens, the recommended one first.
+#[tauri::command]
+async fn llm_models(crow: tauri::State<'_, Crow>, provider: llm::Provider) -> Result<Vec<llm::Model>> {
+    llm::models(&crow.http, provider).await
+}
+
+/// A section query matching `request`, written by `model`, that compiles
+/// alongside `global_filters`.
+#[tauri::command]
+async fn write_query(
+    crow: tauri::State<'_, Crow>,
+    provider: llm::Provider,
+    model: String,
+    request: llm::Request,
+    global_filters: Vec<types::GlobalFilter>,
+) -> Result<llm::QueryDraft> {
+    llm::write_query(&crow.http, provider, &model, &request, &global_filters).await
 }
 
 /// Opens each pull request URL as a browser tab, in the order given.
@@ -162,7 +210,12 @@ pub fn run() {
             request_reviewers,
             snooze,
             wake,
-            open_in_browser
+            open_in_browser,
+            llm_keys,
+            set_llm_key,
+            forget_llm_key,
+            llm_models,
+            write_query
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
