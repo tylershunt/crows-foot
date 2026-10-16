@@ -9,6 +9,10 @@ CI unless they change what a user sees.
 
 ## 0.12.1
 
+- **Copy branch name** in a row's menu copies the pull request's branch.
+- Stack bars and icons use seven clearly different colors, and two stacks on the
+  dashboard no longer share or nearly share a color.
+
 ## 0.12.0
 
 - **Write queries with a model** in Settings stores an Anthropic or OpenAI API

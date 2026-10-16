@@ -47,3 +47,17 @@ test("consecutively numbered stacks are told apart", () => {
 
   assert.notEqual(color(first), color(second));
 });
+test("stacks whose numbers pick the same hue are told apart", () => {
+  const first = pullRequest(1, "one", "main");
+  const second = pullRequest(1 + 7 * 8, "two", "main");
+  const color = stackColors([first, second]);
+
+  assert.notEqual(color(first), color(second));
+});
+
+test("no two stacks share a color while the palette has one free", () => {
+  const stacks = Array.from({ length: 7 }, (_, index) => pullRequest(index * 7, `b${index}`, "main"));
+  const color = stackColors(stacks);
+
+  assert.equal(new Set(stacks.map(color)).size, stacks.length);
+});

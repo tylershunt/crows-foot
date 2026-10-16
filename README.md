@@ -249,7 +249,8 @@ only ever shows the dashboard.
 
 Each row ends in two controls. The link button copies the pull request's URL to
 the clipboard and shows a check for a moment. The menu button holds the rest of
-its actions, among them **Snooze until updated**.
+its actions, among them **Snooze until updated** and **Copy branch name**,
+which copies the pull request's head branch.
 
 On a row whose stack shows two or more pull requests in its section, the menu
 offers **Copy stack links**. It copies a Markdown list of those pull requests,
@@ -343,8 +344,9 @@ other pull requests by its most recently updated member.
 A stack's color comes from a fixed palette, chosen by the number of the pull
 request at the bottom of the stack, so a stack that spreads across sections —
 one member approved, another still waiting — wears one color in all of them.
-The palette holds eight hues, so two stacks whose bottom numbers are a multiple
-of eight apart share a color; consecutive ones never do.
+The palette holds seven distinct hues. When two stacks' numbers pick the same
+hue, the stack with the higher bottom number takes the next free one, so no two
+stacks on the dashboard share a color until there are more than seven.
 
 Naming the parent rather than indenting means sibling branches read correctly:
 two pull requests that both build on `#1234` each say `on #1234`, which says
