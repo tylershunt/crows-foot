@@ -42,6 +42,7 @@ fragment PullRequestFields on PullRequest {
       }
     }
   }
+  viewerLatestReview { state }
   latestReviews(first: 10) {
     nodes { state author { login avatarUrl url } }
   }
@@ -242,6 +243,7 @@ fn into_pull_request(node: &Value) -> Option<PullRequest> {
             .filter_map(|reviewer| reviewer.login.or(reviewer.name))
             .collect(),
         latest_reviews: raw.latest_reviews.map(|reviews| reviews.nodes).unwrap_or_default(),
+        viewer_review_state: raw.viewer_latest_review.map(|review| review.state),
     })
 }
 
@@ -377,7 +379,13 @@ struct RawPullRequest {
     labels: Nodes<Label>,
     review_requests: Nodes<RawReviewRequest>,
     latest_reviews: Option<Nodes<Review>>,
+    viewer_latest_review: Option<RawReview>,
     commits: Nodes<RawCommitNode>,
+}
+
+#[derive(Deserialize)]
+struct RawReview {
+    state: String,
 }
 
 #[derive(Deserialize)]
@@ -660,6 +668,28 @@ mod tests {
 
         assert!(approved.pull_requests.iter().all(approves));
         assert!(!untouched.pull_requests.iter().any(approves));
+    }
+
+/// Run with `cargo test -- --ignored` and a GitHub credential to hand.
+    #[tokio::test]
+    #[ignore = "calls GitHub"]
+    async fn a_live_section_reads_a_reviewers_result_off_their_latest_review() {
+        let config = crate::types::AppConfig {
+            sections: vec![
+                section("is:pr archived:false approved-by:@me", 30),
+                section("is:pr archived:false -approved-by:@me reviewed-by:@me", 30),
+            ],
+            global_filters: Vec::new(),
+            refresh_interval_seconds: 120,
+        };
+
+        let dashboard = live(&config).await;
+        let [approved, otherwise] = &dashboard.sections[..2] else { panic!("two sections") };
+
+        assert!(approved.error.is_none() && otherwise.error.is_none());
+        assert!(!approved.pull_requests.is_empty(), "the viewer has approved a pull request");
+        assert!(approved.pull_requests.iter().all(|row| row.viewer_review_state.as_deref() == Some("APPROVED")));
+        assert!(otherwise.pull_requests.iter().all(|row| row.viewer_review_state.as_deref() != Some("APPROVED")));
     }
 
     async fn live(config: &crate::types::AppConfig) -> DashboardResponse {

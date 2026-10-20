@@ -56,6 +56,9 @@ const CROW_TOKENS = [
   "stacked:yes",
   "reviewers:0",
   "approvals:>=2",
+  "approved-by:",
+  "changes-requested-by:",
+  "commented-by:",
   "size:>500",
   "files:>20",
 ];

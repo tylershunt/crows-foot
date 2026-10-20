@@ -91,6 +91,8 @@ export interface PullRequest {
   /** Reviewers with an outstanding request, by login for users and by name for teams. */
   requestedReviewers: string[];
   latestReviews: Review[];
+  /** The state of the signed-in user's latest review, if they left one. */
+  viewerReviewState: ReviewState | null;
 }
 
 /** A user-configured group of pull requests, defined by a query. */

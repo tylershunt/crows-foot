@@ -71,6 +71,9 @@ Qualifiers GitHub cannot answer, checked against the pull requests a search retu
 - `approvals:N`: reviewers whose latest review approves.
 - `size:N`: lines added plus deleted.
 - `files:N`: files changed.
+- `approved-by:LOGIN`, `changes-requested-by:LOGIN`, `commented-by:LOGIN`: that person's latest review
+  approves, requests changes, or only comments. LOGIN may be `@me`. Without a `-` each also searches
+  `reviewed-by:LOGIN`, so it narrows an `or` branch on its own.
 A count may lead with `>`, `>=`, `<`, or `<=`, such as `size:>500` or `approvals:>=2`.
 
 Rules the query must keep:

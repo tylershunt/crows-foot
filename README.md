@@ -185,6 +185,16 @@ outstanding), `approvals:>=2` (reviewers whose latest review approves),
 `size:>500` (lines moved either way), and `files:>20`. Each takes `yes`/`no` or
 a count, and a count may lead with `>`, `>=`, `<`, or `<=`.
 
+**A reviewer's result.** `approved-by:alice`, `changes-requested-by:alice`, and
+`commented-by:alice` hold when alice's latest review on the pull request
+approves, asks for changes, or only comments. A later review replaces an
+earlier one, so a reviewer who approved and then asked for changes matches
+`changes-requested-by:` alone. Each takes a login or `@me`. GitHub's own
+`reviewed-by:` cannot tell these apart, so the app searches `reviewed-by:alice`
+and checks the result itself, which also lets `approved-by:alice` stand as the
+GitHub half of an `or` branch. Negated, as `-approved-by:alice`, it is checked
+locally alone.
+
 `approvals:` counts, where GitHub's own `review:approved` only says whether a
 pull request cleared review as a whole, so `approvals:1 review:approved` finds
 what one person waved through.

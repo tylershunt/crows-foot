@@ -188,6 +188,7 @@ mod tests {
             labels: Vec::new(),
             requested_reviewers: Vec::new(),
             latest_reviews: Vec::new(),
+            viewer_review_state: None,
         }
     }
 

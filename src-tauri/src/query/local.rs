@@ -29,6 +29,11 @@ impl Local {
             "files" => Comparison::read(key, &term.value).map(Test::Files),
             "reviewers" => Comparison::read(key, &term.value).map(Test::Reviewers),
             "approvals" => Comparison::read(key, &term.value).map(Test::Approvals),
+            "approved-by" => Reviewer::read(key, &term.value).map(|by| Test::LatestReview(by, "APPROVED")),
+            "changes-requested-by" => {
+                Reviewer::read(key, &term.value).map(|by| Test::LatestReview(by, "CHANGES_REQUESTED"))
+            }
+            "commented-by" => Reviewer::read(key, &term.value).map(|by| Test::LatestReview(by, "COMMENTED")),
             _ => return None,
         };
 
@@ -37,6 +42,15 @@ impl Local {
 
     pub fn holds(&self, pull_request: &PullRequest) -> bool {
         self.test.holds(pull_request) != self.negated
+    }
+
+    /// The GitHub search that holds every pull request this qualifier keeps,
+    /// when there is one: `approved-by:X` keeps only pull requests X reviewed.
+    pub fn implied_search(&self) -> Option<Term> {
+        match &self.test {
+            Test::LatestReview(_, _) if !self.negated => Some(Term::qualifier("reviewed-by", &self.term.value)),
+            _ => None,
+        }
     }
 
     /// The qualifier as the user wrote it.
@@ -64,6 +78,39 @@ enum Test {
     Reviewers(Comparison),
     /// Reviewers whose latest review approves, which is what GitHub counts too.
     Approvals(Comparison),
+    /// The reviewer's latest review is in this state.
+    LatestReview(Reviewer, &'static str),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Reviewer {
+    Viewer,
+    Login(String),
+}
+
+impl Reviewer {
+    fn read(key: &str, value: &str) -> Result<Self> {
+        if value == "@me" {
+            return Ok(Self::Viewer);
+        }
+        let login = value.strip_prefix('@').unwrap_or(value);
+        if login.is_empty() || !login.chars().all(|character| character.is_ascii_alphanumeric() || character == '-') {
+            return Err(AppError::new(format!("`{key}:` takes a GitHub login or @me, not `{value}`.")));
+        }
+        Ok(Self::Login(login.to_string()))
+    }
+
+    /// The state of this reviewer's latest review on the pull request, if they left one.
+    fn latest_review<'a>(&self, pull_request: &'a PullRequest) -> Option<&'a str> {
+        match self {
+            Self::Viewer => pull_request.viewer_review_state.as_deref(),
+            Self::Login(login) => pull_request
+                .latest_reviews
+                .iter()
+                .find(|review| review.author.as_ref().is_some_and(|author| author.login.eq_ignore_ascii_case(login)))
+                .map(|review| review.state.as_str()),
+        }
+    }
 }
 
 impl Test {
@@ -76,6 +123,7 @@ impl Test {
             Self::Files(against) => against.holds(pull_request.changed_files),
             Self::Reviewers(against) => against.holds(pull_request.requested_reviewers.len() as i64),
             Self::Approvals(against) => against.holds(approvals(pull_request)),
+            Self::LatestReview(reviewer, state) => reviewer.latest_review(pull_request) == Some(*state),
         }
     }
 }
@@ -177,7 +225,46 @@ mod tests {
             labels: Vec::new(),
             requested_reviewers: vec!["birds".into(), "hunt".into()],
             latest_reviews: Vec::new(),
+            viewer_review_state: None,
         }
+    }
+
+    fn reviewed(login: &str, state: &str) -> crate::types::Review {
+        crate::types::Review {
+            state: state.into(),
+            author: Some(crate::types::Actor { login: login.into(), avatar_url: String::new(), url: String::new() }),
+        }
+    }
+
+    #[test]
+    fn a_reviewers_result_is_read_from_their_latest_review() {
+        let mut pull_request = pull_request();
+        pull_request.latest_reviews = vec![reviewed("Alice", "APPROVED"), reviewed("bob", "CHANGES_REQUESTED")];
+
+        assert!(local("approved-by:alice").holds(&pull_request));
+        assert!(local("changes-requested-by:bob").holds(&pull_request));
+        assert!(!local("approved-by:bob").holds(&pull_request));
+        assert!(!local("commented-by:alice").holds(&pull_request));
+        assert!(!local("approved-by:carol").holds(&pull_request));
+        assert!(local("-approved-by:carol").holds(&pull_request));
+    }
+
+    #[test]
+    fn at_me_reads_the_viewers_own_latest_review() {
+        let mut pull_request = pull_request();
+        assert!(!local("approved-by:@me").holds(&pull_request));
+
+        pull_request.viewer_review_state = Some("APPROVED".into());
+        assert!(local("approved-by:@me").holds(&pull_request));
+        assert!(!local("changes-requested-by:@me").holds(&pull_request));
+    }
+
+    #[test]
+    fn a_reviewers_result_is_searched_among_what_they_reviewed_unless_negated() {
+        assert_eq!(local("approved-by:alice").implied_search(), Some(Term::qualifier("reviewed-by", "alice")));
+        assert_eq!(local("commented-by:@me").implied_search(), Some(Term::qualifier("reviewed-by", "@me")));
+        assert_eq!(local("-approved-by:alice").implied_search(), None);
+        assert_eq!(local("size:>5").implied_search(), None);
     }
 
     #[test]
@@ -271,6 +358,7 @@ mod tests {
         };
 
         assert_eq!(complaint("unread", "maybe"), "`unread:` takes yes or no, not `maybe`.");
+        assert_eq!(complaint("approved-by", "org/team"), "`approved-by:` takes a GitHub login or @me, not `org/team`.");
         assert_eq!(
             complaint("size", "big"),
             "`size:` takes a number, optionally after >, >=, <, or <=, not `big`."

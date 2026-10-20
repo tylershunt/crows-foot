@@ -28,6 +28,9 @@ const ANCHORS: &[&str] = &[
     "user-review-requested",
 ];
 
+/// Local qualifiers that search what their reviewer reviewed, and so anchor too.
+const REVIEW_RESULTS: &[&str] = &["approved-by", "changes-requested-by", "commented-by"];
+
 /// What a section's query comes to: the searches to run, unioned, and the
 /// advice worth showing the user about them.
 #[derive(Clone, Debug, Serialize)]
@@ -230,7 +233,13 @@ fn compile(disjunct: &[Literal]) -> Result<Search> {
 
     for literal in disjunct {
         match Local::read(&literal.term, literal.negated) {
-            Some(local) => keep(&mut kept_locally, local?, Local::render),
+            Some(local) => {
+                let local = local?;
+                if let Some(implied) = local.implied_search() {
+                    keep(&mut query, implied.render(), String::clone);
+                }
+                keep(&mut kept_locally, local, Local::render);
+            }
             None => keep(&mut query, literal.render(), String::clone),
         }
     }
@@ -260,7 +269,8 @@ fn rendered(disjunct: &[Literal]) -> String {
 
 fn anchored(disjunct: &[Literal]) -> bool {
     disjunct.iter().any(|literal| {
-        !literal.negated && literal.term.key.as_deref().is_some_and(|key| ANCHORS.contains(&key))
+        !literal.negated
+            && literal.term.key.as_deref().is_some_and(|key| ANCHORS.contains(&key) || REVIEW_RESULTS.contains(&key))
     })
 }
 
@@ -404,6 +414,29 @@ mod tests {
             ["unread:yes", "-size:>500"]
         );
         assert!(!plan.github_counts_alone());
+    }
+
+    #[test]
+    fn a_reviewers_result_searches_what_they_reviewed_and_keeps_the_result_locally() {
+        let plan = on("is:pr approved-by:alice");
+        assert_eq!(plan.searches[0].query, "is:pr reviewed-by:alice");
+        assert_eq!(plan.searches[0].kept_locally.iter().map(Local::render).collect::<Vec<_>>(), ["approved-by:alice"]);
+        assert!(plan.warnings.is_empty());
+    }
+
+    #[test]
+    fn a_reviewers_result_anchors_its_own_branch_of_an_or() {
+        assert_eq!(
+            searches("is:pr (author:@me or changes-requested-by:bob)"),
+            ["is:pr author:@me", "is:pr reviewed-by:bob"]
+        );
+    }
+
+    #[test]
+    fn a_denied_reviewers_result_is_checked_locally_alone() {
+        let plan = on("author:@me -approved-by:alice");
+        assert_eq!(plan.searches[0].query, "author:@me");
+        assert_eq!(plan.searches[0].kept_locally.iter().map(Local::render).collect::<Vec<_>>(), ["-approved-by:alice"]);
     }
 
     #[test]

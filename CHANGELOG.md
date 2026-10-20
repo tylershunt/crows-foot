@@ -12,6 +12,9 @@ CI unless they change what a user sees.
 - **Copy branch name** in a row's menu copies the pull request's branch.
 - **Write queries with a model** uses a Corvic API key and room, through
   Corvic's LLM router, in place of Anthropic and OpenAI keys.
+- New query qualifiers `approved-by:`, `changes-requested-by:`, and
+  `commented-by:` filter by a reviewer's latest review; each takes a login or
+  `@me`.
 
 ## 0.12.1
 

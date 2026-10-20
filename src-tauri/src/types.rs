@@ -80,6 +80,9 @@ pub struct PullRequest {
     /// Reviewers with an outstanding request, by login for users and by name for teams.
     pub requested_reviewers: Vec<String>,
     pub latest_reviews: Vec<Review>,
+    /// The state of the signed-in user's latest review, if they left one.
+    #[serde(default)]
+    pub viewer_review_state: Option<String>,
 }
 
 /// A user-configured group of pull requests, defined by a GitHub search query.
