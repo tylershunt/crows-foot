@@ -7,6 +7,8 @@ Write for someone using the app: what they will see or can now do, one bullet
 per change. Name the control or screen it is on. Leave out refactors, tests and
 CI unless they change what a user sees.
 
+## 0.12.3
+
 ## 0.12.2
 
 - **Copy branch name** in a row's menu copies the pull request's branch.
