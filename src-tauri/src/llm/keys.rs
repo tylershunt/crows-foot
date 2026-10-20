@@ -1,54 +1,45 @@
-//! Provider API keys, held in the macOS Keychain.
+//! The Corvic API key, held in the macOS Keychain.
 
-use super::Provider;
 use crate::error::{AppError, Result};
 
 const SERVICE: &str = "dev.tylershunt.crows-foot.llm";
+const ACCOUNT: &str = "corvic";
 
-fn entry(provider: Provider) -> Result<keyring::Entry> {
-    keyring::Entry::new(SERVICE, account(provider)).map_err(|error| keychain_error(provider, error))
+fn entry() -> Result<keyring::Entry> {
+    keyring::Entry::new(SERVICE, ACCOUNT).map_err(keychain_error)
 }
 
-fn account(provider: Provider) -> &'static str {
-    match provider {
-        Provider::Anthropic => "anthropic",
-        Provider::Openai => "openai",
-    }
-}
-
-pub fn store_key(provider: Provider, key: &str) -> Result<()> {
+pub fn store_key(key: &str) -> Result<()> {
     let key = key.trim();
     if key.is_empty() {
         return Err(AppError::new("The API key is empty."));
     }
-    entry(provider)?.set_password(key).map_err(|error| keychain_error(provider, error))
+    entry()?.set_password(key).map_err(keychain_error)
 }
 
-pub fn forget_key(provider: Provider) -> Result<()> {
-    match entry(provider)?.delete_credential() {
+pub fn forget_key() -> Result<()> {
+    match entry()?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(error) => Err(keychain_error(provider, error)),
+        Err(error) => Err(keychain_error(error)),
     }
 }
 
-pub fn has_key(provider: Provider) -> Result<bool> {
-    match entry(provider)?.get_password() {
+pub fn has_key() -> Result<bool> {
+    match entry()?.get_password() {
         Ok(_) => Ok(true),
         Err(keyring::Error::NoEntry) => Ok(false),
-        Err(error) => Err(keychain_error(provider, error)),
+        Err(error) => Err(keychain_error(error)),
     }
 }
 
-pub(super) fn key(provider: Provider) -> Result<String> {
-    match entry(provider)?.get_password() {
+pub(super) fn key() -> Result<String> {
+    match entry()?.get_password() {
         Ok(key) => Ok(key),
-        Err(keyring::Error::NoEntry) => {
-            Err(AppError::new(format!("Add an {} API key in Settings first.", provider.name())))
-        }
-        Err(error) => Err(keychain_error(provider, error)),
+        Err(keyring::Error::NoEntry) => Err(AppError::new("Add a Corvic API key in Settings first.")),
+        Err(error) => Err(keychain_error(error)),
     }
 }
 
-fn keychain_error(provider: Provider, error: keyring::Error) -> AppError {
-    AppError::new(format!("The Keychain refused the {} key: {error}", provider.name()))
+fn keychain_error(error: keyring::Error) -> AppError {
+    AppError::new(format!("The Keychain refused the Corvic API key: {error}"))
 }

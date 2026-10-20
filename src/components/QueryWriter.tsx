@@ -6,7 +6,7 @@ import { QueryPreview } from "./QueryPreview.js";
 import { SparklesIcon } from "./icons.js";
 
 interface QueryWriterProps {
-  /** The model that writes, or null when no provider has a key and a model chosen. */
+  /** The room and model that write, or null until a Corvic API key and a room are set. */
   model: QueryModel | null;
   /** The query the conversation revises, or null to write a new section. */
   currentQuery: string | null;
@@ -52,7 +52,7 @@ export function QueryWriter({ model, currentQuery, globalFilters, onAccept, plac
       const turns: ChatTurn[] = asked.map((entry) =>
         entry.fromModel ? { fromModel: true, text: JSON.stringify(entry.draft) } : { fromModel: false, text: entry.text },
       );
-      const draft = await api.writeQuery(model.provider, model.model, turns, startingQuery, globalFilters);
+      const draft = await api.writeQuery(model.roomId, model.model, turns, startingQuery, globalFilters);
       setEntries([...asked, { fromModel: true, draft }]);
     } catch (caught) {
       setEntries(entries);
@@ -122,7 +122,7 @@ export function QueryWriter({ model, currentQuery, globalFilters, onAccept, plac
           autoFocus
           placeholder={
             !model
-              ? "Add an API key under Write queries with a model to describe a section"
+              ? "Connect a Corvic API key under Write queries with a model to describe a section"
               : entries.length > 0
                 ? "Ask for a change"
                 : placeholder

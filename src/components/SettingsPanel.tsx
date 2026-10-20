@@ -382,9 +382,9 @@ export function SettingsPanel({
           </div>
 
           <ModelSettings
-            keys={queryModel.keys}
+            keyStored={queryModel.keyStored}
             keyError={queryModel.keyError}
-            refreshKeys={queryModel.refreshKeys}
+            refreshKey={queryModel.refreshKey}
             choice={queryModel.choice}
             onChoice={queryModel.setChoice}
           />

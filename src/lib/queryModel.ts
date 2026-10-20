@@ -1,49 +1,39 @@
 import { useCallback, useEffect, useState } from "react";
-import type { LlmProvider } from "../../shared/types.js";
 import { api } from "./api.js";
 
 const STORAGE_KEY = "crows-foot-query-model";
 
-export const PROVIDER_NAMES: Record<LlmProvider, string> = { anthropic: "Anthropic", openai: "OpenAI" };
-
-/** The provider and model chosen to write queries, kept across launches. */
+/** The room billed for writing queries, and the model chosen, kept across launches. */
 export interface ModelChoice {
-  provider: LlmProvider;
-  /** The model chosen for each provider, absent until the user picks one. */
-  models: Partial<Record<LlmProvider, string>>;
+  roomId: string;
+  /** The model chosen, or null for the room's default. */
+  model: string | null;
 }
 
-/** A provider and model ready to write a query. */
-export interface QueryModel {
-  provider: LlmProvider;
-  model: string;
-}
+/** A room and model ready to write a query. */
+export type QueryModel = ModelChoice;
 
 function readChoice(): ModelChoice {
   try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as ModelChoice | null;
-    if (stored && (stored.provider === "anthropic" || stored.provider === "openai")) {
-      return { provider: stored.provider, models: stored.models ?? {} };
-    }
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as Partial<ModelChoice> | null;
+    return { roomId: typeof stored?.roomId === "string" ? stored.roomId : "", model: stored?.model ?? null };
   } catch {
-    // An unreadable choice is no choice.
+    return { roomId: "", model: null };
   }
-  return { provider: "anthropic", models: {} };
 }
 
 /**
- * Which providers hold a key, which provider and model are chosen, and the
- * model ready to write queries when the chosen provider has a key and a model.
+ * Whether the Corvic API key is stored, the room and model chosen, and the
+ * choice ready to write queries once both a key and a room are set.
  */
 export function useQueryModel() {
-  const [keys, setKeys] = useState<Partial<Record<LlmProvider, boolean>>>({});
+  const [keyStored, setKeyStored] = useState(false);
   const [choice, setChoice] = useState<ModelChoice>(readChoice);
   const [keyError, setKeyError] = useState<string | null>(null);
 
-  const refreshKeys = useCallback(async () => {
+  const refreshKey = useCallback(async () => {
     try {
-      const states = await api.llmKeys();
-      setKeys(Object.fromEntries(states.map((state) => [state.provider, state.stored])));
+      setKeyStored(await api.llmKeyStored());
       setKeyError(null);
     } catch (caught) {
       setKeyError(caught instanceof Error ? caught.message : String(caught));
@@ -51,15 +41,14 @@ export function useQueryModel() {
   }, []);
 
   useEffect(() => {
-    void refreshKeys();
-  }, [refreshKeys]);
+    void refreshKey();
+  }, [refreshKey]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(choice));
   }, [choice]);
 
-  const model = choice.models[choice.provider];
-  const ready: QueryModel | null = keys[choice.provider] && model ? { provider: choice.provider, model } : null;
+  const ready: QueryModel | null = keyStored && choice.roomId.trim() !== "" ? choice : null;
 
-  return { keys, keyError, refreshKeys, choice, setChoice, ready };
+  return { keyStored, keyError, refreshKey, choice, setChoice, ready };
 }

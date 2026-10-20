@@ -25,23 +25,23 @@ struct Crow {
     http: reqwest::Client,
 }
 
-/// Each provider, and whether its API key is in the Keychain.
+/// Whether the Corvic API key is in the Keychain.
 #[tauri::command]
-fn llm_keys() -> Result<Vec<llm::KeyState>> {
-    llm::Provider::ALL.iter().map(|&provider| Ok(llm::KeyState { provider, stored: llm::has_key(provider)? })).collect()
+fn llm_key_stored() -> Result<bool> {
+    llm::has_key()
 }
 
-/// Checks `key` against the provider, then stores it in the Keychain, and
-/// returns the models it opens.
+/// Checks `key` against the router for `room_id`, then stores it in the
+/// Keychain, and returns the models the router offers the room.
 #[tauri::command]
-async fn set_llm_key(crow: tauri::State<'_, Crow>, provider: llm::Provider, key: String) -> Result<Vec<llm::Model>> {
-    let previous = llm::has_key(provider)?;
-    llm::store_key(provider, &key)?;
-    match llm::models(&crow.http, provider).await {
+async fn set_llm_key(crow: tauri::State<'_, Crow>, key: String, room_id: String) -> Result<Vec<llm::Model>> {
+    let previous = llm::has_key()?;
+    llm::store_key(&key)?;
+    match llm::models(&crow.http, &room_id).await {
         Ok(models) => Ok(models),
         Err(error) => {
             if !previous {
-                llm::forget_key(provider)?;
+                llm::forget_key()?;
             }
             Err(error)
         }
@@ -49,27 +49,27 @@ async fn set_llm_key(crow: tauri::State<'_, Crow>, provider: llm::Provider, key:
 }
 
 #[tauri::command]
-fn forget_llm_key(provider: llm::Provider) -> Result<()> {
-    llm::forget_key(provider)
+fn forget_llm_key() -> Result<()> {
+    llm::forget_key()
 }
 
-/// The models the provider's key opens, the recommended one first.
+/// The models the router offers `room_id`.
 #[tauri::command]
-async fn llm_models(crow: tauri::State<'_, Crow>, provider: llm::Provider) -> Result<Vec<llm::Model>> {
-    llm::models(&crow.http, provider).await
+async fn llm_models(crow: tauri::State<'_, Crow>, room_id: String) -> Result<Vec<llm::Model>> {
+    llm::models(&crow.http, &room_id).await
 }
 
-/// A section query matching `request`, written by `model`, that compiles
-/// alongside `global_filters`.
+/// A section query matching the conversation in `request`, written by `model`
+/// or the room's default, that compiles alongside `global_filters`.
 #[tauri::command]
 async fn write_query(
     crow: tauri::State<'_, Crow>,
-    provider: llm::Provider,
-    model: String,
+    room_id: String,
+    model: Option<String>,
     request: llm::Request,
     global_filters: Vec<types::GlobalFilter>,
 ) -> Result<llm::QueryDraft> {
-    llm::write_query(&crow.http, provider, &model, &request, &global_filters).await
+    llm::write_query(&crow.http, &room_id, model.as_deref(), &request, &global_filters).await
 }
 
 /// Opens each pull request URL as a browser tab, in the order given.
@@ -211,7 +211,7 @@ pub fn run() {
             snooze,
             wake,
             open_in_browser,
-            llm_keys,
+            llm_key_stored,
             set_llm_key,
             forget_llm_key,
             llm_models,

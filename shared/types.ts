@@ -163,21 +163,11 @@ export interface PlannedSearch {
   keptLocally: string[];
 }
 
-/** A company whose models can write section queries with the user's API key. */
-export type LlmProvider = "anthropic" | "openai";
-
-/** Whether a provider's API key is in the Keychain. */
-export interface LlmKeyState {
-  provider: LlmProvider;
-  stored: boolean;
-}
-
-/** A model a provider offers for writing queries. */
+/** A model Corvic's LLM router offers a room. */
 export interface LlmModel {
   id: string;
-  name: string;
-  /** The model offered first when the user has not chosen one. */
-  recommended: boolean;
+  /** Whether the room's own organization defined the model. */
+  organization: boolean;
 }
 
 /** What a section should be, as a model wrote it. */

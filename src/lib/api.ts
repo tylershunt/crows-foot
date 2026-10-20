@@ -3,9 +3,7 @@ import type {
   AppConfig,
   DashboardResponse,
   GlobalFilter,
-  LlmKeyState,
   LlmModel,
-  LlmProvider,
   ParentReviewers,
   QueryDraft,
   QueryPlan,
@@ -57,24 +55,26 @@ export const api = {
     }),
   snooze: (pullRequestId: string) => call<void>("snooze", { pullRequestId }),
   wake: (pullRequestId: string) => call<void>("wake", { pullRequestId }),
-  llmKeys: () => call<LlmKeyState[]>("llm_keys"),
-  /** Checks the key with the provider, stores it in the Keychain, and resolves to the models it opens. */
-  setLlmKey: (provider: LlmProvider, key: string) => call<LlmModel[]>("set_llm_key", { provider, key }),
-  forgetLlmKey: (provider: LlmProvider) => call<void>("forget_llm_key", { provider }),
-  /** The models the provider's stored key opens, the recommended one first. */
-  llmModels: (provider: LlmProvider) => call<LlmModel[]>("llm_models", { provider }),
+  /** Whether the Corvic API key is in the Keychain. */
+  llmKeyStored: () => call<boolean>("llm_key_stored"),
+  /** Checks the key with the router for the room, stores it in the Keychain, and resolves to the room's models. */
+  setLlmKey: (key: string, roomId: string) => call<LlmModel[]>("set_llm_key", { key, roomId }),
+  forgetLlmKey: () => call<void>("forget_llm_key"),
+  /** The models Corvic's LLM router offers the room. */
+  llmModels: (roomId: string) => call<LlmModel[]>("llm_models", { roomId }),
   /**
    * The section the conversation in `messages` calls for, revising
    * `currentQuery` when it is set, whose query compiles alongside
-   * `globalFilters`. `messages` ends with the user's latest message.
+   * `globalFilters`. `messages` ends with the user's latest message, and a
+   * null `model` is the room's default.
    */
   writeQuery: (
-    provider: LlmProvider,
-    model: string,
+    roomId: string,
+    model: string | null,
     messages: ChatTurn[],
     currentQuery: string | null,
     globalFilters: GlobalFilter[],
-  ) => call<QueryDraft>("write_query", { provider, model, request: { messages, currentQuery }, globalFilters }),
+  ) => call<QueryDraft>("write_query", { roomId, model, request: { messages, currentQuery }, globalFilters }),
   /** Opens each URL as a browser tab, in the order given. */
   openInBrowser: (urls: string[]) => call<void>("open_in_browser", { urls }),
 };

@@ -135,11 +135,14 @@ what you meant.
 
 ## Writing queries with a model
 
-Settings can have a model write a section's query from a description. Under
-**Write queries with a model**, pick Anthropic or OpenAI and paste an API key.
-The app checks the key with the provider and stores it in the macOS Keychain;
-it never enters `config.json`. The model list is the provider's own, with a
-recommended model chosen until you pick another.
+Settings can have a model write a section's query from a description, through
+Corvic's hosted LLM router. Under **Write queries with a model**, paste a Corvic
+API key and the id of the room whose organization pays for the completions.
+**Connect** checks both with the router and stores the key in the macOS
+Keychain; it never enters `config.json`. The model list is what the router
+offers the room, and **The room's default** leaves the choice to the room.
+`CROWS_FOOT_LLM_ROUTER_URL` points the app at another router, such as
+`https://api.corvic.dev/v1/llm`.
 
 The sparkles button on a section opens a chat under its query. Describe what
 the section should hold, or how to change the query it has, and the model
