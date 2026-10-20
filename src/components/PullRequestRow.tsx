@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { type ReactNode, type SVGProps, useCallback, useEffect, useState } from "react";
 import type {
   CheckState,
   PullRequest,
@@ -17,6 +17,7 @@ import { ReviewerPicker } from "./ReviewerPicker.js";
 import { useOverflowTitle } from "../lib/useOverflowTitle.js";
 import { SectionMarker } from "./SectionMarker.js";
 import {
+  BranchIcon,
   CheckCircleIcon,
   CheckIcon,
   ClockIcon,
@@ -234,17 +235,7 @@ function RowMenu({
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState<"menu" | "reviewers" | null>(null);
   const [togglingDraft, setTogglingDraft] = useState(false);
-  const [stackCopy, setStackCopy] = useState<"copied" | "failed" | null>(null);
-  const close = useCallback(() => {
-    setOpen(null);
-    setStackCopy(null);
-  }, []);
-
-  useEffect(() => {
-    if (!stackCopy) return;
-    const timeout = setTimeout(close, COPY_CONFIRMATION_MS);
-    return () => clearTimeout(timeout);
-  }, [stackCopy, close]);
+  const close = useCallback(() => setOpen(null), []);
 
   const item =
     "flex w-full items-center gap-2 px-3 py-1.5 text-left text-ink-700 hover:bg-sheen-500/10 dark:text-ink-200";
@@ -267,7 +258,7 @@ function RowMenu({
       </button>
 
       {anchor && open === "menu" && (
-        <Popover anchor={anchor} edge={row} onClose={close} label={`Actions for ${pr.title}`} width={210} maxHeight={160}>
+        <Popover anchor={anchor} edge={row} onClose={close} label={`Actions for ${pr.title}`} width={210} maxHeight={180}>
           <div role="menu" className="py-1">
             {pr.state === "OPEN" && onRequestReviewers && (
               <button type="button" role="menuitem" className={item} onClick={() => setOpen("reviewers")}>
@@ -296,33 +287,27 @@ function RowMenu({
               </button>
             )}
             {stackMembers.length > 1 && (
-              <button
-                type="button"
-                role="menuitem"
-                disabled={stackCopy !== null}
+              <CopyMenuItem
+                className={item}
+                text={() => markdownLinkList(stackMembers)}
                 title="Copies a Markdown list linking each pull request of this stack in this section, base first"
-                className={`${item} disabled:cursor-default`}
-                onClick={() =>
-                  copyText(markdownLinkList(stackMembers)).then(
-                    () => setStackCopy("copied"),
-                    () => setStackCopy("failed"),
-                  )
-                }
-              >
-                {stackCopy === "copied" ? (
-                  <CheckIcon className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                ) : (
-                  <StackIcon
-                    className={`h-3.5 w-3.5 shrink-0 ${stackCopy === "failed" ? "text-rose-500" : "text-ink-400"}`}
-                  />
-                )}
-                {stackCopy === "copied"
-                  ? `Copied ${stackMembers.length} links`
-                  : stackCopy === "failed"
-                    ? "Could not copy the links"
-                    : `Copy stack links (${stackMembers.length})`}
-              </button>
+                icon={StackIcon}
+                label={`Copy stack links (${stackMembers.length})`}
+                copiedLabel={`Copied ${stackMembers.length} links`}
+                failedLabel="Could not copy the links"
+                onDone={close}
+              />
             )}
+            <CopyMenuItem
+              className={item}
+              text={() => pr.headRef}
+              title={pr.headRef}
+              icon={BranchIcon}
+              label="Copy branch name"
+              copiedLabel="Copied branch name"
+              failedLabel="Could not copy the branch"
+              onDone={close}
+            />
             <button
               type="button"
               role="menuitem"
@@ -353,6 +338,58 @@ function RowMenu({
 }
 
 const COPY_CONFIRMATION_MS = 1500;
+
+/** A menu item that copies `text`, confirms in place, then calls `onDone`. */
+function CopyMenuItem({
+  className,
+  text,
+  title,
+  icon: Icon,
+  label,
+  copiedLabel,
+  failedLabel,
+  onDone,
+}: {
+  className: string;
+  text: () => string;
+  title: string;
+  icon: (props: SVGProps<SVGSVGElement>) => ReactNode;
+  label: string;
+  copiedLabel: string;
+  failedLabel: string;
+  onDone: () => void;
+}) {
+  const [outcome, setOutcome] = useState<"copied" | "failed" | null>(null);
+
+  useEffect(() => {
+    if (!outcome) return;
+    const timeout = setTimeout(onDone, COPY_CONFIRMATION_MS);
+    return () => clearTimeout(timeout);
+  }, [outcome, onDone]);
+
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      disabled={outcome !== null}
+      title={title}
+      className={`${className} disabled:cursor-default`}
+      onClick={() =>
+        copyText(text()).then(
+          () => setOutcome("copied"),
+          () => setOutcome("failed"),
+        )
+      }
+    >
+      {outcome === "copied" ? (
+        <CheckIcon className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+      ) : (
+        <Icon className={`h-3.5 w-3.5 shrink-0 ${outcome === "failed" ? "text-rose-500" : "text-ink-400"}`} />
+      )}
+      <span className="truncate">{outcome === "copied" ? copiedLabel : outcome === "failed" ? failedLabel : label}</span>
+    </button>
+  );
+}
 
 function CopyLinkButton({ pr }: { pr: PullRequest }) {
   const [outcome, setOutcome] = useState<"copied" | "failed" | null>(null);

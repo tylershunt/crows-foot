@@ -205,3 +205,12 @@ export const SparklesIcon = (p: IconProps) => (
     <path d="M18.5 3v4M16.5 5h4M18 16v3M16.5 17.5h3" />
   </Icon>
 );
+
+export const BranchIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="6" cy="5" r="2" />
+    <circle cx="6" cy="19" r="2" />
+    <circle cx="18" cy="7" r="2" />
+    <path d="M6 7v10M18 9c0 5-6 4-12 8" />
+  </Icon>
+);
