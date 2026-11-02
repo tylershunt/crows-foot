@@ -135,6 +135,7 @@ export function Section({
                         detached={entry.detached}
                         stackColor={color}
                         stackMembers={stackMembers}
+                        onBurnDown={onBurnDown}
                       />
                     );
                   };

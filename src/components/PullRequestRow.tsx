@@ -24,6 +24,7 @@ import {
   CommentIcon,
   DashCircleIcon,
   DraftIcon,
+  FlameIcon,
   LinkIcon,
   LockIcon,
   MenuIcon,
@@ -61,9 +62,11 @@ interface PullRequestRowProps {
   stackColor: string;
   /**
    * The rows of this row's stack shown in its section, base first. The menu
-   * offers to copy their links when there are two or more.
+   * offers to copy their links, and to burn them down, when there are two or more.
    */
   stackMembers?: PullRequest[];
+  /** Opens each pull request given in a browser tab, in the order given. */
+  onBurnDown: (pullRequests: PullRequest[]) => void;
 }
 
 export function PullRequestRow({
@@ -78,6 +81,7 @@ export function PullRequestRow({
   detached = false,
   stackColor,
   stackMembers = [],
+  onBurnDown,
 }: PullRequestRowProps) {
   const { ref: titleRef, title: titleTooltip } = useOverflowTitle<HTMLSpanElement>(pr.title);
   const [row, setRow] = useState<HTMLDivElement | null>(null);
@@ -206,6 +210,7 @@ export function PullRequestRow({
         onToggleDraft={onToggleDraft}
         onRequestReviewers={onRequestReviewers}
         stackMembers={stackMembers}
+        onBurnDown={onBurnDown}
       />
 
       {overgrowthShown && <Overgrowth seed={pr.id} stage={overgrowth(pr.updatedAt)} />}
@@ -222,6 +227,7 @@ function RowMenu({
   onToggleDraft,
   onRequestReviewers,
   stackMembers,
+  onBurnDown,
 }: {
   pr: PullRequest;
   /** The row whose right edge the menu and the reviewer picker line up with. */
@@ -231,6 +237,7 @@ function RowMenu({
   onToggleDraft?: (pullRequest: PullRequest) => Promise<void>;
   onRequestReviewers?: (pullRequest: PullRequest, reviewers: ReviewerCandidate[]) => Promise<void>;
   stackMembers: PullRequest[];
+  onBurnDown: (pullRequests: PullRequest[]) => void;
 }) {
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState<"menu" | "reviewers" | null>(null);
@@ -258,7 +265,7 @@ function RowMenu({
       </button>
 
       {anchor && open === "menu" && (
-        <Popover anchor={anchor} edge={row} onClose={close} label={`Actions for ${pr.title}`} width={210} maxHeight={180}>
+        <Popover anchor={anchor} edge={row} onClose={close} label={`Actions for ${pr.title}`} width={210} maxHeight={210}>
           <div role="menu" className="py-1">
             {pr.state === "OPEN" && onRequestReviewers && (
               <button type="button" role="menuitem" className={item} onClick={() => setOpen("reviewers")}>
@@ -284,6 +291,21 @@ function RowMenu({
                   <DraftIcon className="h-3.5 w-3.5 shrink-0 text-ink-400" />
                 )}
                 {pr.isDraft ? "Mark ready for review" : "Convert to draft"}
+              </button>
+            )}
+            {stackMembers.length > 1 && (
+              <button
+                type="button"
+                role="menuitem"
+                title="Opens each pull request of this stack in this section in its own tab, base first"
+                className={item}
+                onClick={() => {
+                  setOpen(null);
+                  onBurnDown(stackMembers);
+                }}
+              >
+                <FlameIcon className="h-3.5 w-3.5 shrink-0 text-ink-400" />
+                {`Burn down stack (${stackMembers.length})`}
               </button>
             )}
             {stackMembers.length > 1 && (

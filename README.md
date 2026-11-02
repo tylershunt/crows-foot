@@ -266,8 +266,9 @@ its actions, among them **Snooze until updated** and **Copy branch name**,
 which copies the pull request's head branch.
 
 On a row whose stack shows two or more pull requests in its section, the menu
-offers **Copy stack links**. It copies a Markdown list of those pull requests,
-base first, one per line as `- [#123 Title](url)`.
+offers **Burn down stack**, which opens each of them in its own tab, base first,
+and **Copy stack links**, which copies a Markdown list of them, base first, one
+per line as `- [#123 Title](url)`.
 
 On an open pull request you authored, the menu offers **Convert to draft**, or
 **Mark ready for review** on a draft. The dashboard then refetches, so the pull

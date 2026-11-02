@@ -13,6 +13,8 @@ CI unless they change what a user sees.
   stacks never land on neighboring colors, and the stack bar is bolder.
 - When GitHub cannot be reached, the dashboard keeps its last results and the
   top bar shows a small **Offline** mark in place of an error banner.
+- **Burn down stack** in a stacked row's menu opens just that stack's pull
+  requests in the section, base first.
 
 ## 0.12.2
 
