@@ -9,6 +9,9 @@ CI unless they change what a user sees.
 
 ## 0.12.3
 
+- Stacks on the dashboard take hues spread around the color wheel, so two
+  stacks never land on neighboring colors, and the stack bar is bolder.
+
 ## 0.12.2
 
 - **Copy branch name** in a row's menu copies the pull request's branch.

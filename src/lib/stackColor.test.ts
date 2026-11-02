@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { PullRequest } from "../../shared/types.js";
-import { stackColors } from "./stackColor.js";
+import { hueDistance, stackColors } from "./stackColor.js";
 
 function pullRequest(number: number, headRef: string, baseRef: string, repo = "o/r"): PullRequest {
   return { id: `pr-${repo}-${number}`, number, headRef, baseRef, repo, title: headRef } as unknown as PullRequest;
@@ -49,15 +49,36 @@ test("consecutively numbered stacks are told apart", () => {
 });
 test("stacks whose numbers pick the same hue are told apart", () => {
   const first = pullRequest(1, "one", "main");
-  const second = pullRequest(1 + 7 * 8, "two", "main");
+  const second = pullRequest(1 + 8 * 8, "two", "main");
   const color = stackColors([first, second]);
 
   assert.notEqual(color(first), color(second));
 });
 
 test("no two stacks share a color while the palette has one free", () => {
-  const stacks = Array.from({ length: 7 }, (_, index) => pullRequest(index * 7, `b${index}`, "main"));
+  const stacks = Array.from({ length: 8 }, (_, index) => pullRequest(index * 8, `b${index}`, "main"));
   const color = stackColors(stacks);
 
   assert.equal(new Set(stacks.map(color)).size, stacks.length);
+});
+
+test("two stacks sit at least a third of the color wheel apart, whatever their numbers", () => {
+  for (let first = 1; first <= 16; first++) {
+    for (let second = first + 1; second <= 17; second++) {
+      const a = pullRequest(first, `a${first}`, "main");
+      const b = pullRequest(second, `b${second}`, "main");
+      const color = stackColors([a, b]);
+      assert.ok(hueDistance(color(a), color(b)) >= 120, `#${first} and #${second}`);
+    }
+  }
+});
+
+test("three stacks each sit at least a sixth of the color wheel from the others", () => {
+  const stacks = [pullRequest(4, "a", "main"), pullRequest(5, "b", "main"), pullRequest(12, "c", "main")];
+  const color = stackColors(stacks);
+  for (const one of stacks) {
+    for (const other of stacks) {
+      if (one !== other) assert.ok(hueDistance(color(one), color(other)) >= 60);
+    }
+  }
 });

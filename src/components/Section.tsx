@@ -185,7 +185,7 @@ function StackBracket({ group, color }: { group: StackGroup; color: string }) {
           group.parentElsewhere ? "" : "border-t-2",
           group.childElsewhere ? "" : "border-b-2",
         ].join(" ")}
-        style={{ borderColor: color, opacity: 0.55 }}
+        style={{ borderColor: color, opacity: 0.8 }}
       />
     </>
   );

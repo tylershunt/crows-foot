@@ -354,12 +354,14 @@ pull request it sits on, as `on #1234`. Hovering that gives the parent's title.
 A stack's rows run from its base upwards. The stack sits among the section's
 other pull requests by its most recently updated member.
 
-A stack's color comes from a fixed palette, chosen by the number of the pull
-request at the bottom of the stack, so a stack that spreads across sections —
-one member approved, another still waiting — wears one color in all of them.
-The palette holds seven distinct hues. When two stacks' numbers pick the same
-hue, the stack with the higher bottom number takes the next free one, so no two
-stacks on the dashboard share a color until there are more than seven.
+A stack's color is drawn for the pull request at the bottom of the stack, so a
+stack that spreads across sections — one member approved, another still
+waiting — wears one color in all of them. The palette holds eight hues, none of
+them the violet of the unread marker. In order of bottom number, the first stack
+on the dashboard takes the hue its number picks, and each stack after it takes
+the free hue farthest around the color wheel from those already taken. Two
+stacks land on opposite sides of the wheel, and no two share a color until there
+are more than eight.
 
 Naming the parent rather than indenting means sibling branches read correctly:
 two pull requests that both build on `#1234` each say `on #1234`, which says
