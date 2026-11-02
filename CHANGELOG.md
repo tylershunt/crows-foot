@@ -7,6 +7,8 @@ Write for someone using the app: what they will see or can now do, one bullet
 per change. Name the control or screen it is on. Leave out refactors, tests and
 CI unless they change what a user sees.
 
+## 0.12.4
+
 ## 0.12.3
 
 - Stacks on the dashboard take hues spread around the color wheel, so two
