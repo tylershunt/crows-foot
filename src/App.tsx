@@ -9,12 +9,14 @@ import type {
 import { Section } from "./components/Section.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
 import { UpdateBanner } from "./components/UpdateBanner.js";
-import { AlertIcon, FilterIcon, RefreshIcon, SearchIcon, SettingsIcon } from "./components/icons.js";
+import { AlertIcon, FilterIcon, OfflineIcon, RefreshIcon, SearchIcon, SettingsIcon } from "./components/icons.js";
 import { retainPullRequests } from "../shared/dashboard.js";
 import { enabledGlobalFilters } from "../shared/query.js";
 import { SNOOZED_SECTION } from "../shared/snoozed.js";
 import { api } from "./lib/api.js";
 import { badgeCount, showOnTheDock } from "./lib/badge.js";
+import { relativeAge } from "./lib/format.js";
+import { keepLastGood } from "./lib/lastGood.js";
 import { stackColors } from "./lib/stackColor.js";
 import { BESIDE_WINDOW_CONTROLS, titleBar } from "./lib/titlebar.js";
 import { checkForUpdate, type Update } from "./lib/update.js";
@@ -30,6 +32,12 @@ export function App() {
   const sectionsScroller = useScrollbarWhileScrolling<HTMLDivElement>();
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Why the last refresh failed while an earlier dashboard is still shown. */
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [fetchedAt, setFetchedAt] = useState<string | null>(null);
+  const [staleSections, setStaleSections] = useState<Record<string, string>>({});
+  const shownDashboard = useRef<DashboardResponse | null>(null);
+  shownDashboard.current = dashboard;
   const [refreshing, setRefreshing] = useState(false);
   const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
   const [filterText, setFilterText] = useState("");
@@ -47,10 +55,16 @@ export function App() {
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      setDashboard(await api.dashboard());
+      const refreshed = keepLastGood(shownDashboard.current, await api.dashboard());
+      setDashboard(refreshed.dashboard);
+      setStaleSections(refreshed.stale);
+      setFetchedAt(new Date().toISOString());
+      setRefreshError(null);
       setError(null);
     } catch (fetchError) {
-      setError(fetchError instanceof Error ? fetchError.message : String(fetchError));
+      const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
+      if (shownDashboard.current) setRefreshError(message);
+      else setError(message);
     } finally {
       setRefreshing(false);
     }
@@ -275,6 +289,16 @@ export function App() {
             </button>
           )}
 
+          {refreshError && (
+            <span
+              title={`${refreshError}\nShowing what was fetched ${fetchedAt ? `${relativeAge(fetchedAt)} ago` : "earlier"}.`}
+              className="flex shrink-0 items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400"
+            >
+              <OfflineIcon className="h-3.5 w-3.5" />
+              {fetchedAt ? `Offline · ${relativeAge(fetchedAt)}` : "Offline"}
+            </span>
+          )}
+
           <button
             type="button"
             onClick={() => void refresh()}
@@ -322,6 +346,7 @@ export function App() {
                   key={section.config.id}
                   section={section}
                   loading={refreshing}
+                  staleError={staleSections[section.config.id] ?? null}
                   collapsed={collapsed}
                   onToggle={() =>
                     setCollapsedOverrides((current) => ({ ...current, [section.config.id]: !collapsed }))

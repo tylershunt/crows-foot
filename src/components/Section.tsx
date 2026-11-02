@@ -1,6 +1,6 @@
 import type { PullRequest, ReviewerCandidate, SectionResult } from "../../shared/types.js";
 import { SNOOZED_SECTION } from "../../shared/snoozed.js";
-import { AlertIcon, ChevronDownIcon, FeatherIcon, FlameIcon, StackIcon } from "./icons.js";
+import { AlertIcon, ChevronDownIcon, FeatherIcon, FlameIcon, OfflineIcon, StackIcon } from "./icons.js";
 import { groupIntoStacks, type StackGroup } from "../lib/stacks.js";
 import { PullRequestRow, ROW_EDGE_INSET } from "./PullRequestRow.js";
 import { SectionMarker } from "./SectionMarker.js";
@@ -26,6 +26,8 @@ interface SectionProps {
   otherPullRequests: PullRequest[];
   /** Draws skeleton rows while a fetch is in flight and no results are cached yet. */
   loading: boolean;
+  /** Why the rows shown are from an earlier fetch, or null when they are current. */
+  staleError: string | null;
 }
 
 export function Section({
@@ -41,6 +43,7 @@ export function Section({
   stackColor,
   otherPullRequests,
   loading,
+  staleError,
 }: SectionProps) {
   const { config, pullRequests, totalCount, countIsPartial, error } = section;
   const hiddenCount = totalCount - pullRequests.length;
@@ -76,6 +79,11 @@ export function Section({
               {totalCount}
               {countIsPartial && "+"}
             </span>
+            {staleError && (
+              <span title={`Not updated: ${staleError}`} className="shrink-0 text-amber-600 dark:text-amber-400">
+                <OfflineIcon className="h-3 w-3" />
+              </span>
+            )}
           </button>
 
           <button

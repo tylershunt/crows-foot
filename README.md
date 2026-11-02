@@ -397,6 +397,12 @@ GitHub. Change a section's query when you want different results.
 The dashboard refetches on the interval set in Settings (120 seconds by
 default), whenever the window regains focus, and when you press `r`.
 
+When a refresh cannot reach GitHub, the dashboard keeps what it last showed and
+the top bar reads **Offline** with how long ago that was; hover it for the
+error. A section whose own search fails, where the same query answered before,
+keeps its last rows and shows the same mark beside its count. A section whose
+query changed shows its failure in place.
+
 ## Updating
 
 A packaged build checks GitHub's latest release when it opens. If a newer one

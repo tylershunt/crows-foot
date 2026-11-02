@@ -11,6 +11,8 @@ CI unless they change what a user sees.
 
 - Stacks on the dashboard take hues spread around the color wheel, so two
   stacks never land on neighboring colors, and the stack bar is bolder.
+- When GitHub cannot be reached, the dashboard keeps its last results and the
+  top bar shows a small **Offline** mark in place of an error banner.
 
 ## 0.12.2
 
