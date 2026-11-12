@@ -7,7 +7,7 @@ Write for someone using the app: what they will see or can now do, one bullet
 per change. Name the control or screen it is on. Leave out refactors, tests and
 CI unless they change what a user sees.
 
-## 0.12.4
+## 0.12.5
 
 - Dragging or shift-clicking across rows no longer leaves them highlighted as
   selected text.
