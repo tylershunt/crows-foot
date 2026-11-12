@@ -9,6 +9,8 @@ CI unless they change what a user sees.
 
 ## 0.12.4
 
+- Dragging or shift-clicking across rows no longer leaves them highlighted as
+  selected text.
 - Automatic refreshes no longer move rows while you click: the dashboard holds
   their results until 10 seconds after your last click and while a row menu or
   reviewer picker is open. The **Refresh** button and `r` still update at once.

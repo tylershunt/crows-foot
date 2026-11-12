@@ -87,7 +87,7 @@ export function PullRequestRow({
   const [row, setRow] = useState<HTMLDivElement | null>(null);
 
   return (
-    <div ref={setRow} className={`group relative flex items-center ${ROW_EDGE_INSET} border-b border-ink-100 transition-colors hover:bg-sheen-500/5 dark:border-ink-800/70 dark:hover:bg-sheen-500/10`}>
+    <div ref={setRow} className={`group relative flex select-none items-center ${ROW_EDGE_INSET} border-b border-ink-100 transition-colors hover:bg-sheen-500/5 dark:border-ink-800/70 dark:hover:bg-sheen-500/10`}>
       <a
         href={pr.url}
         target="_blank"

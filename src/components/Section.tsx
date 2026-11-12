@@ -55,7 +55,7 @@ export function Section({
     <section id={`section-${config.id}`} className="scroll-mt-24">
       <div className="overflow-hidden rounded-xl border border-ink-200 bg-white shadow-sm dark:border-ink-800 dark:bg-ink-900">
         <header
-          className={`flex items-center gap-2.5 border-b border-ink-200 py-2.5 pl-4 dark:border-ink-800 ${ROW_EDGE_INSET}`}
+          className={`flex select-none items-center gap-2.5 border-b border-ink-200 py-2.5 pl-4 dark:border-ink-800 ${ROW_EDGE_INSET}`}
         >
           <button
             type="button"
