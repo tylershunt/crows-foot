@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { refreshHold } from "../lib/refreshHold.js";
 
 interface PopoverProps {
   /** The control that opened the popover, which it opens above or below. */
@@ -23,6 +24,8 @@ const GAP = 4;
 export function Popover({ anchor, edge, onClose, label, width, maxHeight, children }: PopoverProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const position = usePlacement(anchor, edge ?? anchor, maxHeight);
+
+  useEffect(() => refreshHold.openPopover(), []);
 
   useEffect(() => {
     const inside = (target: EventTarget | null) =>

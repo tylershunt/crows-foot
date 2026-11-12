@@ -398,6 +398,11 @@ GitHub. Change a section's query when you want different results.
 The dashboard refetches on the interval set in Settings (120 seconds by
 default), whenever the window regains focus, and when you press `r`.
 
+The interval and focus refreshes hold their results until 10 seconds after your
+last click, and while a row menu or reviewer picker is open, so rows stay put
+while you work. The **Refresh** button and `r` show results as soon as they
+arrive.
+
 When a refresh cannot reach GitHub, the dashboard keeps what it last showed and
 the top bar reads **Offline** with how long ago that was; hover it for the
 error. A section whose own search fails, where the same query answered before,

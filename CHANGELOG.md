@@ -9,6 +9,10 @@ CI unless they change what a user sees.
 
 ## 0.12.4
 
+- Automatic refreshes no longer move rows while you click: the dashboard holds
+  their results until 10 seconds after your last click and while a row menu or
+  reviewer picker is open. The **Refresh** button and `r` still update at once.
+
 ## 0.12.3
 
 - Stacks on the dashboard take hues spread around the color wheel, so two

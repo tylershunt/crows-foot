@@ -17,6 +17,7 @@ import { api } from "./lib/api.js";
 import { badgeCount, showOnTheDock } from "./lib/badge.js";
 import { relativeAge } from "./lib/format.js";
 import { keepLastGood } from "./lib/lastGood.js";
+import { refreshHold } from "./lib/refreshHold.js";
 import { stackColors } from "./lib/stackColor.js";
 import { BESIDE_WINDOW_CONTROLS, titleBar } from "./lib/titlebar.js";
 import { checkForUpdate, type Update } from "./lib/update.js";
@@ -52,22 +53,40 @@ export function App() {
   const [, setTick] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const refresh = useCallback(async () => {
+  const latestRefresh = useRef(0);
+  const shownRefresh = useRef(0);
+
+  /** Fetches the dashboard; an `automatic` refresh shows its result once `refreshHold` releases. */
+  const refresh = useCallback(async (automatic = false) => {
+    const id = ++latestRefresh.current;
     setRefreshing(true);
+    let fetched: DashboardResponse | null = null;
+    let failure = "";
     try {
-      const refreshed = keepLastGood(shownDashboard.current, await api.dashboard());
+      fetched = await api.dashboard();
+    } catch (fetchError) {
+      failure = fetchError instanceof Error ? fetchError.message : String(fetchError);
+    } finally {
+      setRefreshing(false);
+    }
+    if (automatic) await refreshHold.released();
+    if (id < shownRefresh.current) return;
+    shownRefresh.current = id;
+    if (fetched) {
+      const refreshed = keepLastGood(shownDashboard.current, fetched);
       setDashboard(refreshed.dashboard);
       setStaleSections(refreshed.stale);
       setFetchedAt(new Date().toISOString());
       setRefreshError(null);
       setError(null);
-    } catch (fetchError) {
-      const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
-      if (shownDashboard.current) setRefreshError(message);
-      else setError(message);
-    } finally {
-      setRefreshing(false);
-    }
+    } else if (shownDashboard.current) setRefreshError(failure);
+    else setError(failure);
+  }, []);
+
+  useEffect(() => {
+    const onPointerDown = () => refreshHold.click();
+    window.addEventListener("pointerdown", onPointerDown, true);
+    return () => window.removeEventListener("pointerdown", onPointerDown, true);
   }, []);
 
   useEffect(() => {
@@ -85,12 +104,12 @@ export function App() {
 
   useEffect(() => {
     if (!config) return;
-    const interval = setInterval(() => void refresh(), config.refreshIntervalSeconds * 1000);
+    const interval = setInterval(() => void refresh(true), config.refreshIntervalSeconds * 1000);
     return () => clearInterval(interval);
   }, [config, refresh]);
 
   useEffect(() => {
-    const onFocus = () => void refresh();
+    const onFocus = () => void refresh(true);
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [refresh]);
