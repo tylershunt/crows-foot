@@ -9,6 +9,9 @@ CI unless they change what a user sees.
 
 ## 0.12.5
 
+- A stack's bar in a section breaks with a zig-zag wherever part of the stack
+  is missing: above, below, or between rows whose links sit in another section
+  or are not on the dashboard.
 - Dragging or shift-clicking across rows no longer leaves them highlighted as
   selected text.
 - Automatic refreshes no longer move rows while you click: the dashboard holds

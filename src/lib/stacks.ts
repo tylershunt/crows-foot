@@ -28,7 +28,7 @@ export interface StackGroup {
   rows: StackRow[];
   /** The parent of this group is among the other pull requests. */
   parentElsewhere: boolean;
-  /** A child of this group is among the other pull requests. */
+  /** A child of this group is among the other pull requests, with no member of this group above it. */
   childElsewhere: boolean;
 }
 
@@ -113,8 +113,14 @@ function withEnds(
   const members = new Set(rows.map((row) => row.pullRequest.id));
   const parent = knownParents.get(rows[0]!.pullRequest.id);
   const parentElsewhere = parent != null && !members.has(parent.id);
+  const holdsMember = (pullRequest: PullRequest, seen = new Set<string>()): boolean => {
+    if (members.has(pullRequest.id)) return true;
+    if (seen.has(pullRequest.id)) return false;
+    seen.add(pullRequest.id);
+    return (knownChildren.get(pullRequest.id) ?? []).some((child) => holdsMember(child, seen));
+  };
   const childElsewhere = rows.some((row) =>
-    (knownChildren.get(row.pullRequest.id) ?? []).some((child) => !members.has(child.id)),
+    (knownChildren.get(row.pullRequest.id) ?? []).some((child) => !holdsMember(child)),
   );
 
   return { id: rows[0]!.pullRequest.id, rows, parentElsewhere, childElsewhere };
@@ -173,4 +179,28 @@ function bottomOf(pullRequest: PullRequest, parents: Map<string, PullRequest>): 
 
 function branchKey(repo: string, branch: string): string {
   return `${repo}\u0000${branch}`;
+}
+
+/**
+ * Where a group's stack line breaks for pull requests missing from it, one
+ * entry per boundary: index 0 above the first row, `rows.length` below the
+ * last, and `k` between rows `k - 1` and `k`.
+ *
+ * The line breaks above the first row when its parent is missing, below the
+ * last when any member has a child missing, and between rows when the parent
+ * linking the lower row is missing and differs from the parent of the row
+ * above it.
+ */
+export function stackBreaks(group: StackGroup): boolean[] {
+  const { rows } = group;
+  const members = new Set(rows.map((row) => row.pullRequest.id));
+  const missingParent = (row: StackRow) => row.parent !== null && !members.has(row.parent.id);
+
+  return [
+    group.parentElsewhere || rows[0]!.detached,
+    ...rows
+      .slice(1)
+      .map((row, index) => missingParent(row) && row.parent!.id !== rows[index]!.parent?.id),
+    group.childElsewhere,
+  ];
 }

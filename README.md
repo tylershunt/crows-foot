@@ -375,9 +375,11 @@ or token is involved.
 
 Only the members a section's own query returned are joined as one bar, and all
 of them are, including members whose link runs through a pull request in
-another section. When the parent or a child is in another section, that end of
-the bar is left open, and a member sitting in a section by itself still carries
-the open piece. A
+another section. The bar breaks with a zig-zag wherever part of the stack is
+missing from the section: above the first row when its parent is in another
+section or not on the dashboard, between two rows when the pull request linking
+them is in another section, and below the last row when a child is in another
+section. A member sitting in a section by itself still carries its zig-zags. A
 pull request built on a branch whose pull request is not on the dashboard is
 marked with a stack icon alone, in its stack's color; hover it to see the
 branch it builds on.

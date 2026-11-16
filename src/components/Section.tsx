@@ -1,7 +1,7 @@
 import type { PullRequest, ReviewerCandidate, SectionResult } from "../../shared/types.js";
 import { SNOOZED_SECTION } from "../../shared/snoozed.js";
 import { AlertIcon, ChevronDownIcon, FeatherIcon, FlameIcon, OfflineIcon, StackIcon } from "./icons.js";
-import { groupIntoStacks, type StackGroup } from "../lib/stacks.js";
+import { groupIntoStacks, stackBreaks, type StackGroup } from "../lib/stacks.js";
 import { PullRequestRow, ROW_EDGE_INSET } from "./PullRequestRow.js";
 import { SectionMarker } from "./SectionMarker.js";
 
@@ -98,7 +98,7 @@ export function Section({
         </header>
 
         {!collapsed && (
-          <div className="[&>:last-child]:border-b-0 [&>:last-child>:last-child]:border-b-0">
+          <div className="[&>:last-child]:border-b-0 [&>:last-child>:last-child]:border-b-0 [&>:last-child>:last-child>:last-child]:border-b-0">
             {error ? (
               <div className="flex items-start gap-2 px-4 py-4 text-sm text-rose-600 dark:text-rose-400">
                 <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
@@ -140,12 +140,27 @@ export function Section({
                     );
                   };
 
-                  return drawsBracket(group) ? (
-                    <div key={group.id} className="relative">
-                      <StackBracket group={group} color={color} />
-                      {group.rows.map(row)}
-                    </div>
-                  ) : (
+                  if (drawsBracket(group)) {
+                    const breaks = stackBreaks(group);
+                    const last = group.rows.length - 1;
+                    return (
+                      <div key={group.id} className="relative">
+                        <StackBracket group={group} broken={breaks.includes(true)} color={color} />
+                        {group.rows.map((entry, index) => (
+                          <div key={entry.pullRequest.id} className="relative">
+                            <StackLine
+                              top={index === 0 ? (breaks[0] ? "edge" : "cap") : breaks[index] ? "gap" : "join"}
+                              bottom={index === last ? (breaks[last + 1] ? "edge" : "cap") : breaks[index + 1] ? "gap" : "join"}
+                              label={index === 0 && breaks[0] ? "Part of a stack" : undefined}
+                              color={color}
+                            />
+                            {row(entry)}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return (
                     row(group.rows[0]!)
                   );
                 })}
@@ -167,36 +182,73 @@ function drawsBracket(group: StackGroup): boolean {
   return group.rows.length > 1 || group.parentElsewhere || group.childElsewhere;
 }
 
-function StackBracket({ group, color }: { group: StackGroup; color: string }) {
-  const continues = group.parentElsewhere || group.childElsewhere;
-  const label = continues ? "Part of a stack" : `Stack of ${group.rows.length} pull requests`;
+/** The stack icon above a stack whose base row is in this section. */
+function StackBracket({ group, broken, color }: { group: StackGroup; broken: boolean; color: string }) {
+  if (group.parentElsewhere || group.rows[0]!.detached) return null;
+  return (
+    <span
+      role="img"
+      aria-label={broken ? "Part of a stack" : `Stack of ${group.rows.length} pull requests`}
+      className="pointer-events-none absolute left-[4px] top-px z-10"
+      style={{ color, opacity: STACK_LINE_OPACITY }}
+    >
+      <StackIcon className="h-3 w-3" />
+    </span>
+  );
+}
 
+const STACK_LINE_OPACITY = 0.8;
+
+/**
+ * How a row's stretch of the stack line ends: `cap` turns toward the row,
+ * `join` meets the next row's stretch, `gap` and `edge` break with a zig-zag
+ * for pull requests missing from the section, between rows and at the stack's
+ * ends respectively.
+ */
+type LineEnd = "cap" | "join" | "gap" | "edge";
+
+const TOP_INSET: Record<LineEnd, string> = { cap: "top-[14px]", join: "top-0", gap: "top-2", edge: "top-[18px]" };
+const BOTTOM_INSET: Record<LineEnd, string> = {
+  cap: "bottom-2.5",
+  join: "bottom-0",
+  gap: "bottom-2",
+  edge: "bottom-[18px]",
+};
+
+/** One row's stretch of its stack's line, with the zig-zag for a `gap` above it or an `edge` at either end. */
+function StackLine({ top, bottom, label, color }: { top: LineEnd; bottom: LineEnd; label?: string; color: string }) {
   return (
     <>
-      {!group.parentElsewhere && (
-        <span
-          role="img"
-          aria-label={label}
-          className="pointer-events-none absolute left-[4px] top-px z-10"
-          style={{ color, opacity: 0.8 }}
-        >
-          <StackIcon className="h-3 w-3" />
-        </span>
-      )}
       <span
-        role={group.parentElsewhere ? "img" : undefined}
-        aria-label={group.parentElsewhere ? label : undefined}
-        aria-hidden={group.parentElsewhere ? undefined : true}
+        aria-hidden
         className={[
           "pointer-events-none absolute left-[9px] z-10 w-2 border-l-2",
-          group.parentElsewhere ? "top-1" : "top-[14px]",
-          group.childElsewhere ? "bottom-1" : "bottom-2.5",
-          group.parentElsewhere ? "" : "border-t-2",
-          group.childElsewhere ? "" : "border-b-2",
+          TOP_INSET[top],
+          BOTTOM_INSET[bottom],
+          top === "cap" ? "border-t-2" : "",
+          bottom === "cap" ? "border-b-2" : "",
         ].join(" ")}
-        style={{ borderColor: color, opacity: 0.8 }}
+        style={{ borderColor: color, opacity: STACK_LINE_OPACITY }}
       />
+      {top === "gap" && <ZigZag className="-top-2" color={color} label={label} />}
+      {top === "edge" && <ZigZag className="top-0.5" color={color} label={label} />}
+      {bottom === "edge" && <ZigZag className="bottom-0.5" color={color} />}
     </>
+  );
+}
+
+function ZigZag({ className, color, label }: { className: string; color: string; label?: string }) {
+  return (
+    <svg
+      role={label ? "img" : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+      viewBox="0 0 10 16"
+      className={`pointer-events-none absolute left-[5px] z-10 h-4 w-2.5 overflow-visible ${className}`}
+      style={{ color, opacity: STACK_LINE_OPACITY }}
+    >
+      <path d="M5 0 L9 3 L1 8 L9 13 L5 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    </svg>
   );
 }
 

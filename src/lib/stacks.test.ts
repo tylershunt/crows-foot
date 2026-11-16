@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { PullRequest } from "../../shared/types.js";
-import { groupIntoStacks } from "./stacks.js";
+import { groupIntoStacks, stackBreaks } from "./stacks.js";
 
 function pullRequest(
   id: string,
@@ -209,4 +209,50 @@ test("every pull request is grouped exactly once, including a base/head cycle", 
     .map((row) => row.replace(/[<!].*$/, ""));
 
   assert.deepEqual(ids.slice().sort(), ["a", "b", "m", "n", "orphan"]);
+});
+
+function breaks(pullRequests: PullRequest[], elsewhere: PullRequest[] = []): boolean[][] {
+  return groupIntoStacks(pullRequests, elsewhere).map(stackBreaks);
+}
+
+test("a stack held whole in one section has no breaks", () => {
+  const bottom = pullRequest("a", "a", "main");
+  const top = pullRequest("b", "b", "a");
+
+  assert.deepEqual(breaks([bottom, top]), [[false, false, false]]);
+});
+
+test("the line breaks above a stack whose base is in another section", () => {
+  const parent = pullRequest("a", "a", "main");
+
+  assert.deepEqual(breaks([pullRequest("b", "b", "a"), pullRequest("c", "c", "b")], [parent]), [
+    [true, false, false],
+  ]);
+});
+
+test("the line breaks above a stack whose base branch has no pull request on the dashboard", () => {
+  assert.deepEqual(breaks([pullRequest("b", "b", "gone"), pullRequest("c", "c", "b")]), [[true, false, false]]);
+});
+
+test("the line breaks below a stack with a child in another section", () => {
+  const bottom = pullRequest("a", "a", "main");
+  const middle = pullRequest("b", "b", "a");
+
+  assert.deepEqual(breaks([bottom, middle], [pullRequest("c", "c", "b")]), [[false, false, true]]);
+});
+
+test("the line breaks between rows where the pull request linking them is in another section", () => {
+  const bottom = pullRequest("a", "a", "main");
+  const middle = pullRequest("b", "b", "a");
+  const top = pullRequest("c", "c", "b");
+
+  assert.deepEqual(breaks([bottom, top], [middle]), [[false, true, false]]);
+});
+
+test("siblings on a parent in another section break only above the first", () => {
+  const parent = pullRequest("a", "a", "main");
+
+  assert.deepEqual(breaks([pullRequest("b", "b", "a"), pullRequest("c", "c", "a")], [parent]), [
+    [true, false, false],
+  ]);
 });
