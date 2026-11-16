@@ -85,6 +85,7 @@ jobs:
         env:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
+          git fetch origin "refs/tags/$TAG:refs/tags/$TAG"
           git fetch origin main
           git checkout -f -B main FETCH_HEAD
           if [ "v$(node -p 'require("./package.json").version')" != "$TAG" ]; then
