@@ -7,6 +7,8 @@ Write for someone using the app: what they will see or can now do, one bullet
 per change. Name the control or screen it is on. Leave out refactors, tests and
 CI unless they change what a user sees.
 
+## 0.12.6
+
 ## 0.12.5
 
 - A stack's bar in a section breaks with a zig-zag wherever part of the stack
