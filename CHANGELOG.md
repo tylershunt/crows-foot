@@ -7,7 +7,7 @@ Write for someone using the app: what they will see or can now do, one bullet
 per change. Name the control or screen it is on. Leave out refactors, tests and
 CI unless they change what a user sees.
 
-## 0.12.6
+## 0.13.0
 
 - Each row has a checkbox. Tick several pull requests and the top bar offers
   **Copy links** and **Copy Markdown links** for them, and **Request
