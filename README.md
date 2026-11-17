@@ -247,14 +247,14 @@ these, it just returns something you probably did not intend.
 
 ## What each row shows
 
-Left to right: a black dot ringed in violet when the pull request has activity
-you have not seen, the pull request state, the author's avatar, the title, and
-then the repo,
+Left to right: a checkbox, the pull request state, the author's avatar, the
+title, and then the repo,
 number, author, and diff size. Titles too long for the window get a tooltip
 with the full text. On the right: labels, comment count, reviewer
 avatars (a green ring approved, a red ring requested changes, a gray ring
 commented, and gray initials still owe a review), the overall review decision, the CI check rollup, and how long ago the
-pull request was last updated.
+pull request was last updated. A small black dot ringed in violet on the
+checkbox's upper-left corner marks activity you have not seen.
 
 Clicking a row opens it in your browser, where you are already signed in to
 GitHub. Every link in the app leaves for the browser this way; the window itself
@@ -289,6 +289,29 @@ On a pull request stacked on another open one, the picker lists the parent's
 reviewers first and offers **Copy reviewers from #1234**, which ticks every
 person and team requested on the parent and everyone who has reviewed it. The
 parent is found by branch, so it need not be on the dashboard.
+
+## Acting on several pull requests
+
+Tick the checkboxes of the pull requests you want to act on together. A pull
+request listed in two sections is ticked in both. While any are ticked, the top
+bar trades the filter box, global filter count and **Refresh** for the count
+selected and these actions:
+
+- **Copy links** copies the selected pull requests' URLs, in dashboard order,
+  one per line.
+- **Copy Markdown links** copies them as a Markdown list, one per line as
+  `- [#123 Title](url)`.
+- **Request reviewers**, when you wrote every selected pull request, opens the
+  reviewer picker and asks the reviewers you tick on each of them. Suggestions
+  and searches come from the first selected pull request's repository. Any
+  pull request GitHub refuses is named in the picker.
+- **Convert to draft** and **Mark ready for review**, when you wrote every
+  selected pull request, change each one not already in that state.
+
+The dashboard does not refresh while pull requests are ticked; a refresh that
+comes due waits and lands when you clear the selection. The **×** at the left
+of the top bar, or `Esc`, clears it. Clicking a row still opens the pull
+request in your browser.
 
 ## Burning down a section
 
@@ -349,7 +372,7 @@ requests** in Settings to keep every row clean.
 ## Stacks
 
 Pull requests stacked on one another are moved next to each other and joined by
-a bar in the stack's own color, drawn in the gutter left of the unread marker. Rows are not indented; instead each one names the
+a bar in the stack's own color, drawn in the gutter left of the checkboxes. Rows are not indented; instead each one names the
 pull request it sits on, as `on #1234`. Hovering that gives the parent's title.
 
 A stack's rows run from its base upwards. The stack sits among the section's
@@ -390,7 +413,7 @@ branch it builds on.
 | ----- | ------------------------------- |
 | `/`   | Focus the filter box            |
 | `r`   | Refresh                         |
-| `Esc` | Close the settings panel        |
+| `Esc` | Close the settings panel, or clear the selection |
 
 The filter box narrows the pull requests already on screen; it does not re-query
 GitHub. Change a section's query when you want different results.

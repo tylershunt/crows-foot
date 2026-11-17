@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import type { ParentReviewers, PullRequest, ReviewerCandidate } from "../../shared/types.js";
 import { api } from "../lib/api.js";
+import { requestedOnAll } from "../lib/selection.js";
 import { CheckIcon, SearchIcon, StackIcon } from "./icons.js";
 import { Popover } from "./Popover.js";
 
 interface ReviewerPickerProps {
-  pr: PullRequest;
+  /** The pull requests to request reviews on; suggestions and searches use the first one's repository. */
+  pullRequests: PullRequest[];
   /** The control the picker opens above or below. */
   anchor: HTMLElement;
   /** The element whose right edge the picker's right edge meets; the anchor by default. */
@@ -20,12 +22,15 @@ const PANEL_WIDTH = 288;
 const PANEL_HEIGHT = 340;
 
 /**
- * A panel for asking people and teams to review `pr`: GitHub's suggestions and
- * the viewer's teams until a search is typed, then the repository's
- * collaborators and the organization's teams matching it. A pull request
- * stacked on an open one is offered that one's reviewers, listed first.
+ * A panel for asking people and teams to review `pullRequests`: GitHub's
+ * suggestions and the viewer's teams until a search is typed, then the
+ * repository's collaborators and the organization's teams matching it. A single
+ * pull request stacked on an open one is offered that one's reviewers, listed
+ * first.
  */
-export function ReviewerPicker({ pr, anchor, edge, onRequest, onClose }: ReviewerPickerProps) {
+export function ReviewerPicker({ pullRequests, anchor, edge, onRequest, onClose }: ReviewerPickerProps) {
+  const pr = pullRequests[0]!;
+  const single = pullRequests.length === 1;
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<ReviewerCandidate[] | null>(null);
   const [chosen, setChosen] = useState<ReviewerCandidate[]>([]);
@@ -34,7 +39,7 @@ export function ReviewerPicker({ pr, anchor, edge, onRequest, onClose }: Reviewe
   const [parent, setParent] = useState<ParentReviewers | null>(null);
 
   useEffect(() => {
-    if (!pr.targetsNonDefaultBranch) return;
+    if (!single || !pr.targetsNonDefaultBranch) return;
     let current = true;
     api.parentReviewers(pr.id).then(
       (found) => current && setParent(found),
@@ -43,7 +48,7 @@ export function ReviewerPicker({ pr, anchor, edge, onRequest, onClose }: Reviewe
     return () => {
       current = false;
     };
-  }, [pr.id, pr.targetsNonDefaultBranch]);
+  }, [pr.id, pr.targetsNonDefaultBranch, single]);
 
   useEffect(() => {
     let current = true;
@@ -62,7 +67,7 @@ export function ReviewerPicker({ pr, anchor, edge, onRequest, onClose }: Reviewe
     };
   }, [pr.id, query]);
 
-  const requested = new Set(pr.requestedReviewers);
+  const requested = requestedOnAll(pullRequests);
   const copyable = (parent?.reviewers ?? []).filter(
     (reviewer) => !requested.has(reviewer.login) && !chosen.some((one) => one.id === reviewer.id),
   );
@@ -97,7 +102,7 @@ export function ReviewerPicker({ pr, anchor, edge, onRequest, onClose }: Reviewe
       anchor={anchor}
       edge={edge}
       onClose={onClose}
-      label={`Request reviewers for ${pr.title}`}
+      label={single ? `Request reviewers for ${pr.title}` : `Request reviewers for ${pullRequests.length} pull requests`}
       width={PANEL_WIDTH}
       maxHeight={PANEL_HEIGHT}
     >

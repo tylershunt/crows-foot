@@ -33,6 +33,19 @@ export const XCircleIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const MarkdownIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="2.5" y="5.5" width="19" height="13" rx="2" />
+    <path d="M6 15V9l2.5 3L11 9v6M16 9v6m-2.5-2.5L16 15l2.5-2.5" />
+  </Icon>
+);
+
+export const XIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </Icon>
+);
+
 export const ClockIcon = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="12" cy="12" r="9" />

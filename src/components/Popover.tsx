@@ -25,7 +25,7 @@ export function Popover({ anchor, edge, onClose, label, width, maxHeight, childr
   const panelRef = useRef<HTMLDivElement>(null);
   const position = usePlacement(anchor, edge ?? anchor, maxHeight);
 
-  useEffect(() => refreshHold.openPopover(), []);
+  useEffect(() => refreshHold.hold(), []);
 
   useEffect(() => {
     const inside = (target: EventTarget | null) =>

@@ -9,6 +9,13 @@ CI unless they change what a user sees.
 
 ## 0.12.6
 
+- Each row has a checkbox. Tick several pull requests and the top bar offers
+  **Copy links** and **Copy Markdown links** for them, and **Request
+  reviewers**, **Convert to draft** and **Mark ready for review** when you
+  wrote them all. The dashboard does not refresh until you clear the selection
+  with **×** or `Esc`. The unread dot is smaller and sits on the checkbox's
+  corner.
+
 ## 0.12.5
 
 - A stack's bar in a section breaks with a zig-zag wherever part of the stack

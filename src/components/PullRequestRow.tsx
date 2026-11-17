@@ -7,7 +7,7 @@ import type {
   ReviewState,
   SectionConfig,
 } from "../../shared/types.js";
-import { copyText } from "../lib/external.js";
+import { COPY_CONFIRMATION_MS, copyText } from "../lib/external.js";
 import { absoluteTime, readableTextColor, relativeAge } from "../lib/format.js";
 import { overgrowth } from "../lib/overgrowth.js";
 import { markdownLinkList } from "../lib/stackLinks.js";
@@ -67,6 +67,9 @@ interface PullRequestRowProps {
   stackMembers?: PullRequest[];
   /** Opens each pull request given in a browser tab, in the order given. */
   onBurnDown: (pullRequests: PullRequest[]) => void;
+  /** Whether the row's checkbox is ticked. */
+  selected: boolean;
+  onToggleSelected: (pullRequest: PullRequest) => void;
 }
 
 export function PullRequestRow({
@@ -82,31 +85,40 @@ export function PullRequestRow({
   stackColor,
   stackMembers = [],
   onBurnDown,
+  selected,
+  onToggleSelected,
 }: PullRequestRowProps) {
   const { ref: titleRef, title: titleTooltip } = useOverflowTitle<HTMLSpanElement>(pr.title);
   const [row, setRow] = useState<HTMLDivElement | null>(null);
 
   return (
-    <div ref={setRow} className={`group relative flex select-none items-center ${ROW_EDGE_INSET} border-b border-ink-100 transition-colors hover:bg-sheen-500/5 dark:border-ink-800/70 dark:hover:bg-sheen-500/10`}>
-      <a
-        href={pr.url}
-        target="_blank"
-        rel="noreferrer"
-        className="flex min-w-0 flex-1 items-center gap-3 py-2.5 pl-4"
-      >
-        {homeSection ? (
-          <span title={`Waiting in ${homeSection.title}`} className="flex shrink-0">
-            <SectionMarker config={homeSection} glow className="h-3 w-3" />
-          </span>
-        ) : (
-          <span
-            title={pr.isRead ? undefined : "Unread activity"}
-            className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-              pr.isRead ? "" : "bg-ink-950 ring-1 ring-sheen-400 shadow-[0_0_6px_2px_#8b6cf677]"
-            }`}
-          />
-        )}
+    <div
+      ref={setRow}
+      className={`group relative flex select-none items-center ${ROW_EDGE_INSET} border-b border-ink-100 transition-colors dark:border-ink-800/70 ${
+        selected ? "bg-sheen-500/10 dark:bg-sheen-500/15" : "hover:bg-sheen-500/5 dark:hover:bg-sheen-500/10"
+      }`}
+    >
+      <label className="flex shrink-0 cursor-pointer items-center self-stretch pl-5 pr-3" title={`Select #${pr.number}`}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelected(pr)}
+          aria-label={`Select #${pr.number} ${pr.title}`}
+          className="peer sr-only"
+        />
+        <span
+          className={`relative grid h-3.5 w-3.5 place-items-center rounded border transition peer-focus-visible:ring-2 peer-focus-visible:ring-sheen-400 ${
+            selected
+              ? "border-sheen-500 bg-sheen-500 text-white"
+              : "border-ink-300 group-hover:border-ink-400 dark:border-ink-700 dark:group-hover:border-ink-500"
+          }`}
+        >
+          {selected && <CheckIcon className="h-2.5 w-2.5" strokeWidth={3} />}
+          <CornerMarker pr={pr} homeSection={homeSection} />
+        </span>
+      </label>
 
+      <a href={pr.url} target="_blank" rel="noreferrer" className="flex min-w-0 flex-1 items-center gap-3 py-2.5">
         <StateIcon pr={pr} />
 
         {pr.author && (
@@ -215,6 +227,27 @@ export function PullRequestRow({
 
       {overgrowthShown && <Overgrowth seed={pr.id} stage={overgrowth(pr.updatedAt)} />}
     </div>
+  );
+}
+
+/**
+ * Sits on the checkbox's upper-left corner: the section a snoozed pull request
+ * waits to return to, or a glowing dot for unread activity.
+ */
+function CornerMarker({ pr, homeSection }: { pr: PullRequest; homeSection?: SectionConfig }) {
+  if (homeSection) {
+    return (
+      <span title={`Waiting in ${homeSection.title}`} className="absolute -left-1.5 -top-1.5 flex">
+        <SectionMarker config={homeSection} glow className="h-2 w-2 text-[8px]" />
+      </span>
+    );
+  }
+  if (pr.isRead) return null;
+  return (
+    <span
+      title="Unread activity"
+      className="absolute -left-1 -top-1 h-1.5 w-1.5 rounded-full bg-ink-950 ring-1 ring-sheen-400 shadow-[0_0_4px_1px_#8b6cf677]"
+    />
   );
 }
 
@@ -348,7 +381,7 @@ function RowMenu({
 
       {anchor && open === "reviewers" && onRequestReviewers && (
         <ReviewerPicker
-          pr={pr}
+          pullRequests={[pr]}
           anchor={anchor}
           edge={row}
           onRequest={(reviewers) => onRequestReviewers(pr, reviewers)}
@@ -359,7 +392,6 @@ function RowMenu({
   );
 }
 
-const COPY_CONFIRMATION_MS = 1500;
 
 /** A menu item that copies `text`, confirms in place, then calls `onDone`. */
 function CopyMenuItem({

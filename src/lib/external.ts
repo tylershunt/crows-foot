@@ -6,6 +6,9 @@ export async function openExternal(url: string): Promise<void> {
   await openUrl(url);
 }
 
+/** How long a copy control shows that it copied, or failed to. */
+export const COPY_CONFIRMATION_MS = 1500;
+
 /** Puts text on the system clipboard as plain text. */
 export async function copyText(text: string): Promise<void> {
   await writeText(text);

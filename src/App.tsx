@@ -7,6 +7,7 @@ import type {
   SectionResult,
 } from "../shared/types.js";
 import { Section } from "./components/Section.js";
+import { SelectionBar } from "./components/SelectionBar.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
 import { UpdateBanner } from "./components/UpdateBanner.js";
 import { AlertIcon, FilterIcon, OfflineIcon, RefreshIcon, SearchIcon, SettingsIcon } from "./components/icons.js";
@@ -17,7 +18,8 @@ import { api } from "./lib/api.js";
 import { badgeCount, showOnTheDock } from "./lib/badge.js";
 import { relativeAge } from "./lib/format.js";
 import { keepLastGood } from "./lib/lastGood.js";
-import { refreshHold } from "./lib/refreshHold.js";
+import { allReleased, refreshHold, selectionHold } from "./lib/refreshHold.js";
+import { selectedPullRequests } from "./lib/selection.js";
 import { stackColors } from "./lib/stackColor.js";
 import { BESIDE_WINDOW_CONTROLS, titleBar } from "./lib/titlebar.js";
 import { checkForUpdate, type Update } from "./lib/update.js";
@@ -56,7 +58,11 @@ export function App() {
   const latestRefresh = useRef(0);
   const shownRefresh = useRef(0);
 
-  /** Fetches the dashboard; an `automatic` refresh shows its result once `refreshHold` releases. */
+  /**
+   * Fetches the dashboard and resolves once the fetch settles. The result is
+   * shown once `selectionHold` releases, and for an `automatic` refresh once
+   * `refreshHold` releases too.
+   */
   const refresh = useCallback(async (automatic = false) => {
     const id = ++latestRefresh.current;
     setRefreshing(true);
@@ -69,18 +75,23 @@ export function App() {
     } finally {
       setRefreshing(false);
     }
-    if (automatic) await refreshHold.released();
-    if (id < shownRefresh.current) return;
-    shownRefresh.current = id;
-    if (fetched) {
-      const refreshed = keepLastGood(shownDashboard.current, fetched);
-      setDashboard(refreshed.dashboard);
-      setStaleSections(refreshed.stale);
-      setFetchedAt(new Date().toISOString());
-      setRefreshError(null);
-      setError(null);
-    } else if (shownDashboard.current) setRefreshError(failure);
-    else setError(failure);
+
+    const show = () => {
+      if (id < shownRefresh.current) return;
+      shownRefresh.current = id;
+      if (fetched) {
+        const refreshed = keepLastGood(shownDashboard.current, fetched);
+        setDashboard(refreshed.dashboard);
+        setStaleSections(refreshed.stale);
+        setFetchedAt(new Date().toISOString());
+        setRefreshError(null);
+        setError(null);
+      } else if (shownDashboard.current) setRefreshError(failure);
+      else setError(failure);
+    };
+    const holds = automatic ? [refreshHold, selectionHold] : [selectionHold];
+    if (holds.every((hold) => hold.remaining() === 0)) show();
+    else void allReleased(holds).then(show);
   }, []);
 
   useEffect(() => {
@@ -127,7 +138,9 @@ export function App() {
     const onKey = (event: KeyboardEvent) => {
       const typing = event.target instanceof HTMLElement && ["INPUT", "TEXTAREA"].includes(event.target.tagName);
       if (typing) return;
-      if (event.key === "/") {
+      if (event.key === "Escape") {
+        if (!settingsOpen) setSelectedIds(new Set());
+      } else if (event.key === "/") {
         event.preventDefault();
         searchRef.current?.focus();
       } else if (event.key === "r") {
@@ -136,7 +149,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [refresh]);
+  }, [refresh, settingsOpen]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -246,6 +259,77 @@ export function App() {
     [refresh],
   );
 
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const selecting = selectedIds.size > 0;
+  useEffect(() => (selecting ? selectionHold.hold() : undefined), [selecting]);
+  const selected = useMemo(
+    () => selectedPullRequests(dashboard?.sections ?? [], selectedIds),
+    [dashboard, selectedIds],
+  );
+
+  const toggleSelected = useCallback((pullRequest: PullRequest) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (!next.delete(pullRequest.id)) next.add(pullRequest.id);
+      return next;
+    });
+  }, []);
+
+  const setDrafts = useCallback(
+    async (pullRequests: PullRequest[], draft: boolean) => {
+      const setIsDraft = (isDraft: (pullRequest: PullRequest, index: number) => boolean) =>
+        setDashboard(
+          (current) =>
+            current &&
+            pullRequests.reduce(
+              (next, pullRequest, index) =>
+                withPullRequest(next, pullRequest.id, (pr) => ({ ...pr, isDraft: isDraft(pullRequest, index) })),
+              current,
+            ),
+        );
+      setIsDraft(() => draft);
+      const outcomes = await Promise.allSettled(pullRequests.map((pullRequest) => api.setDraft(pullRequest.id, draft)));
+      setIsDraft((pullRequest, index) => {
+        const outcome = outcomes[index]!;
+        return outcome.status === "fulfilled" ? outcome.value : pullRequest.isDraft;
+      });
+      const failed = pullRequests.filter((_, index) => outcomes[index]!.status === "rejected");
+      if (failed.length > 0) {
+        setError(`Could not change ${failed.map((pullRequest) => `#${pullRequest.number}`).join(", ")}: ${failure(outcomes)}`);
+      }
+      void refresh();
+    },
+    [refresh],
+  );
+
+  const requestReviewersOnAll = useCallback(
+    async (pullRequests: PullRequest[], reviewers: ReviewerCandidate[]) => {
+      const outcomes = await Promise.allSettled(
+        pullRequests.map((pullRequest) => api.requestReviewers(pullRequest.id, reviewers)),
+      );
+      const logins = reviewers.map((reviewer) => reviewer.login);
+      const requested = pullRequests.filter((_, index) => outcomes[index]!.status === "fulfilled");
+      setDashboard(
+        (current) =>
+          current &&
+          requested.reduce(
+            (next, pullRequest) =>
+              withPullRequest(next, pullRequest.id, (pr) => ({
+                ...pr,
+                requestedReviewers: [...new Set([...pr.requestedReviewers, ...logins])],
+              })),
+            current,
+          ),
+      );
+      void refresh();
+      const failed = pullRequests.filter((_, index) => outcomes[index]!.status === "rejected");
+      if (failed.length > 0) {
+        throw new Error(`Could not request on ${failed.map((pullRequest) => `#${pullRequest.number}`).join(", ")}: ${failure(outcomes)}`);
+      }
+    },
+    [refresh],
+  );
+
   const resetConfig = useCallback(async () => {
     const { config: saved, path } = await api.resetConfig();
     setConfig(saved);
@@ -285,27 +369,39 @@ export function App() {
             )}
           </div>
 
-          <div className="relative min-w-0 flex-1">
-            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-            <input
-              ref={searchRef}
-              value={filterText}
-              onChange={(event) => setFilterText(event.target.value)}
-              placeholder="Filter loaded pull requests…  (/)"
-              className="w-full rounded-lg border border-ink-200 bg-white py-1.5 pl-9 pr-3 text-xs placeholder:text-ink-400 focus:border-sheen-400 focus:outline-none dark:border-ink-800 dark:bg-ink-900"
+          {selecting ? (
+            <SelectionBar
+              selected={selected}
+              viewerLogin={dashboard?.viewer.login ?? null}
+              onSetDraft={setDrafts}
+              onRequestReviewers={requestReviewersOnAll}
+              onClear={() => setSelectedIds(new Set())}
             />
-          </div>
+          ) : (
+            <>
+            <div className="relative min-w-0 flex-1">
+              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+              <input
+                ref={searchRef}
+                value={filterText}
+                onChange={(event) => setFilterText(event.target.value)}
+                placeholder="Filter loaded pull requests…  (/)"
+                className="w-full rounded-lg border border-ink-200 bg-white py-1.5 pl-9 pr-3 text-xs placeholder:text-ink-400 focus:border-sheen-400 focus:outline-none dark:border-ink-800 dark:bg-ink-900"
+              />
+            </div>
 
-          {activeGlobalFilters.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              title={`Narrowing every section:\n${activeGlobalFilters.map((f) => f.query).join("\n")}`}
-              className="flex shrink-0 items-center gap-1.5 rounded-full bg-sheen-500/10 px-2.5 py-1 text-xs text-sheen-600 transition hover:bg-sheen-500/20 dark:text-sheen-300"
-            >
-              <FilterIcon className="h-3 w-3" />
-              {activeGlobalFilters.length} global filter{activeGlobalFilters.length === 1 ? "" : "s"}
-            </button>
+            {activeGlobalFilters.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                title={`Narrowing every section:\n${activeGlobalFilters.map((f) => f.query).join("\n")}`}
+                className="flex shrink-0 items-center gap-1.5 rounded-full bg-sheen-500/10 px-2.5 py-1 text-xs text-sheen-600 transition hover:bg-sheen-500/20 dark:text-sheen-300"
+              >
+                <FilterIcon className="h-3 w-3" />
+                {activeGlobalFilters.length} global filter{activeGlobalFilters.length === 1 ? "" : "s"}
+              </button>
+            )}
+            </>
           )}
 
           {refreshError && (
@@ -318,15 +414,17 @@ export function App() {
             </span>
           )}
 
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            title="Refresh (r)"
-            className="flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-xs text-ink-600 transition hover:border-sheen-400 hover:text-ink-900 dark:border-ink-800 dark:bg-ink-900 dark:text-ink-300 dark:hover:border-sheen-500 dark:hover:text-white"
-          >
-            <RefreshIcon className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </button>
+          {!selecting && (
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              title="Refresh (r)"
+              className="flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-xs text-ink-600 transition hover:border-sheen-400 hover:text-ink-900 dark:border-ink-800 dark:bg-ink-900 dark:text-ink-300 dark:hover:border-sheen-500 dark:hover:text-white"
+            >
+              <RefreshIcon className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
+          )}
 
           <button
             type="button"
@@ -378,6 +476,8 @@ export function App() {
                   overgrowthShown={overgrowthShown}
                   stackColor={stackColor}
                   otherPullRequests={otherPullRequests}
+                  selectedIds={selectedIds}
+                  onToggleSelected={toggleSelected}
                 />
               );
             })}
@@ -434,6 +534,13 @@ function intoSnoozedSection(dashboard: DashboardResponse, pullRequest: PullReque
         : section,
     ),
   };
+}
+
+/** The first rejection's message among `outcomes`. */
+function failure(outcomes: PromiseSettledResult<unknown>[]): string {
+  const rejected = outcomes.find((outcome) => outcome.status === "rejected");
+  const reason: unknown = rejected?.reason;
+  return reason instanceof Error ? reason.message : String(reason);
 }
 
 /** Applies `update` to every copy of one pull request on the dashboard. */

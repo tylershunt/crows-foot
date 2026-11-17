@@ -24,10 +24,10 @@ test("a click holds for the quiet period, counted from the last click", () => {
   assert.equal(hold.remaining(), 0);
 });
 
-test("an open popover holds until every popover closes", () => {
+test("a hold lasts until every hold is released", () => {
   const hold = new RefreshHold(10_000, clock().now);
-  const closeMenu = hold.openPopover();
-  const closePicker = hold.openPopover();
+  const closeMenu = hold.hold();
+  const closePicker = hold.hold();
   assert.equal(hold.remaining(), Infinity);
   closeMenu();
   closeMenu();
@@ -36,9 +36,9 @@ test("an open popover holds until every popover closes", () => {
   assert.equal(hold.remaining(), 0);
 });
 
-test("released resolves when the last popover closes", async () => {
+test("released resolves when the last hold is released", async () => {
   const hold = new RefreshHold(10_000, clock().now);
-  const close = hold.openPopover();
+  const close = hold.hold();
   let released = false;
   const waiting = hold.released().then(() => (released = true));
   await new Promise((resolve) => setTimeout(resolve, 5));

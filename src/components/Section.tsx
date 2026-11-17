@@ -28,6 +28,9 @@ interface SectionProps {
   loading: boolean;
   /** Why the rows shown are from an earlier fetch, or null when they are current. */
   staleError: string | null;
+  /** The ids of the pull requests whose checkboxes are ticked, in any section. */
+  selectedIds: ReadonlySet<string>;
+  onToggleSelected: (pullRequest: PullRequest) => void;
 }
 
 export function Section({
@@ -44,6 +47,8 @@ export function Section({
   otherPullRequests,
   loading,
   staleError,
+  selectedIds,
+  onToggleSelected,
 }: SectionProps) {
   const { config, pullRequests, totalCount, countIsPartial, error } = section;
   const hiddenCount = totalCount - pullRequests.length;
@@ -136,6 +141,8 @@ export function Section({
                         stackColor={color}
                         stackMembers={stackMembers}
                         onBurnDown={onBurnDown}
+                        selected={selectedIds.has(entry.pullRequest.id)}
+                        onToggleSelected={onToggleSelected}
                       />
                     );
                   };
