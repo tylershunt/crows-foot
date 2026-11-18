@@ -7,6 +7,8 @@ Write for someone using the app: what they will see or can now do, one bullet
 per change. Name the control or screen it is on. Leave out refactors, tests and
 CI unless they change what a user sees.
 
+## 0.13.2
+
 ## 0.13.1
 
 - The update banner appears while Crow's Foot is running: it checks for a new
