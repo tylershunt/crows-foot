@@ -436,9 +436,11 @@ query changed shows its failure in place.
 
 ## Updating
 
-A packaged build checks GitHub's latest release when it opens. If a newer one
-is published, a banner offers to install it and restart. Settings can ask the
-same question on demand.
+A packaged build checks GitHub's latest release when it opens, every hour while
+it runs, and when its window comes back into focus, at most once every ten
+minutes. If a newer one is published, a banner offers to install it and
+restart. Dismissing the banner hides that version until a newer one is
+published or the app restarts. Settings can ask the same question on demand.
 
 Both list the changes in every version between the running one and the one
 offered, read from `CHANGELOG.md` at the offered version's tag. Without that

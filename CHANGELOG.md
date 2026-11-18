@@ -9,6 +9,10 @@ CI unless they change what a user sees.
 
 ## 0.13.1
 
+- The update banner appears while Crow's Foot is running: it checks for a new
+  release every hour and when its window comes back into focus, not only when
+  it opens. A dismissed banner stays away until a newer release is published.
+
 ## 0.13.0
 
 - Each row has a checkbox. Tick several pull requests and the top bar offers

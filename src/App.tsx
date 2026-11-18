@@ -23,6 +23,12 @@ import { selectedPullRequests } from "./lib/selection.js";
 import { stackColors } from "./lib/stackColor.js";
 import { BESIDE_WINDOW_CONTROLS, titleBar } from "./lib/titlebar.js";
 import { checkForUpdate, type Update } from "./lib/update.js";
+import {
+  offersFound,
+  UPDATE_CHECK_INTERVAL_MS,
+  UPDATE_CHECK_MIN_GAP_MS,
+  updateCheckDue,
+} from "./lib/updateSchedule.js";
 import { useScrollbarWhileScrolling } from "./lib/useScrollbarWhileScrolling.js";
 
 type Theme = "light" | "dark";
@@ -125,8 +131,38 @@ export function App() {
     return () => window.removeEventListener("focus", onFocus);
   }, [refresh]);
 
+  const shownUpdate = useRef<Update | null>(null);
+  shownUpdate.current = update;
+  const dismissedVersion = useRef<string | null>(null);
+  const lastUpdateCheck = useRef<number | null>(null);
+
   useEffect(() => {
-    void checkForUpdate().then(setUpdate).catch(() => {});
+    const lookForUpdate = (minimumGapMs: number) => {
+      const now = Date.now();
+      if (!updateCheckDue(lastUpdateCheck.current, now, minimumGapMs)) return;
+      lastUpdateCheck.current = now;
+      checkForUpdate().then(
+        (found) => {
+          if (!found) return;
+          if (offersFound(found.version, shownUpdate.current?.version ?? null, dismissedVersion.current)) setUpdate(found);
+          else void found.close();
+        },
+        () => {},
+      );
+    };
+    lookForUpdate(0);
+    const interval = setInterval(() => lookForUpdate(UPDATE_CHECK_MIN_GAP_MS), UPDATE_CHECK_INTERVAL_MS);
+    const onFocus = () => lookForUpdate(UPDATE_CHECK_MIN_GAP_MS);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
+
+  const dismissUpdate = useCallback(() => {
+    dismissedVersion.current = shownUpdate.current?.version ?? null;
+    setUpdate(null);
   }, []);
 
   useEffect(() => {
@@ -441,7 +477,7 @@ export function App() {
           ref={sectionsScroller}
           className="scrollbar-while-scrolling flex-1 overflow-y-auto overscroll-y-contain px-6 py-5"
         >
-          {update && <UpdateBanner update={update} onDismiss={() => setUpdate(null)} />}
+          {update && <UpdateBanner update={update} onDismiss={dismissUpdate} />}
 
           {error && (
             <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
